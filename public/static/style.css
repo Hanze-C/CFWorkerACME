@@ -1,7 +1,13 @@
+/* 手动设置字体链接 */
+@font-face {
+    font-family: 'MapleMonoNL';
+    src: url('/static/maple.ttf');
+}
+
 body {
     margin: 0;
     padding: 0;
-    font-family: Arial, sans-serif;
+    font-family: MapleMonoNL, sans-serif;
     background: url('https://images.524228.xyz/?random=1') no-repeat center center fixed;
     background-size: cover;
 }
@@ -19,6 +25,7 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
 }
 
 h1 {
@@ -27,18 +34,24 @@ h1 {
     margin-bottom: 20px;
 }
 
-.form-group {
-    margin-bottom: 15px;
+.input-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
 }
 
-.form-group label {
+.input-group {
+    flex: 1;
+    width: 100%;
+}
+
+.input-group label {
     display: block;
     margin-bottom: 5px;
     color: #555;
 }
 
-.form-group input[type="text"],
-.form-group select {
+.input-group input {
     width: 100%;
     padding: 10px;
     border: 1px solid #ddd;
@@ -46,63 +59,252 @@ h1 {
     box-sizing: border-box;
 }
 
-.form-group input[type="text"] {
-    margin-bottom: 10px;
+.buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
 }
 
-.form-group select {
-    padding: 8px;
-}
-
-.modify-btn,.form-group button {
-    width: 100%;
-    padding: 10px;
-    background-color: #5cb85c;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-.form-group button:hover {
-    background-color: #4cae4c;
-}
-
-.github-btn {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    background-color: #333;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    text-align: center;
-    margin-top: 20px;
-    cursor: pointer;
-}
-
-.github-btn:hover {
-    background-color: #555;
-}
-
-.update-btn {
-    width: 100%;
+.RoyalBlue-btn {
     padding: 10px;
     background-color: #007bff;
     color: #fff;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    flex: 1;
+    text-align: center;
 }
 
-.update-btn-btn:hover {
-    background-color: #555;
+.RoyalBlue-btn:hover {
+    background-color: #0056b3;
 }
 
-.hint {
-    font-size: 12px;
-    color: #999;
-    /*text-align: center;*/
+.LimeGreen-btn {
+    padding: 10px;
+    background-color: #5cb85c;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+}
+
+.LimeGreen-btn:hover {
+    background-color: #4cae4c;
+}
+
+.DimGray01-btn {
+    padding: 10px;
+    background-color: #808080;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+}
+
+.DimGray01-btn:hover {
+    background-color: #696969;
+}
+
+/* 表单区域 */
+.form-section {
+    margin-bottom: 20px;
+}
+
+/* 表单标题 */
+.form-section h2 {
+    color: #444;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #4a90e2;
+    padding-bottom: 5px;
+    display: inline-block;
+}
+
+/* 域名设置相关 */
+.input-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* 主体设置部分 */
+.subject-section {
+    margin-top: 20px;
+}
+
+/* 括展/折叠按钮 */
+.subject-section .toggle-btn {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    margin-bottom: 15px;
+    width: 100%;
+    text-align: left;
+    font-size: 16px;
+}
+
+.subject-section .toggle-btn:hover {
+    background-color: #3a7bc8;
+}
+
+/* 主体详情区域 */
+.subject-fields {
+    display: none;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+/* 域名选项区域 */
+.domain-options {
     margin-top: 10px;
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+/* 域名选项的复选框 */
+.domain-options label {
+    display: inline-block;
+    margin-right: 15px;
+    margin-bottom: 10px;
+}
+
+.domain-options input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* 验证方法区域 */
+.verification-methods {
+    margin-top: 10px;
+}
+
+/* 验证方法的复选框 */
+.verification-methods label {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.verification-methods input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* 其他按钮样式 */
+.RoyalBlue-btn {
+    padding: 10px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.RoyalBlue-btn:hover {
+    background-color: #3a7bc8;
+}
+
+/* 表单提交按钮 */
+button[type="submit"] {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 25px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 20px;
+    width: 100%;
+    font-weight: bold;
+}
+
+button[type="submit"]:hover {
+    background-color: #3a7bc8;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.switch label:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .switch label {
+    background-color: #4a90e2;
+}
+
+input:checked + .switch label:before {
+    transform: translateX(26px);
+}
+
+/* 删除按钮样式 */
+.delete-btn {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background-color: #ff3333;
+}
+
+/* 其他按钮样式 */
+.add-btn {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+.add-btn:hover {
+    background-color: #3a7bc8;
 }

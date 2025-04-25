@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL证书助手 - 用户登录</title>
+    <link href="static/style.css" rel="stylesheet"/>
+    <script src="static/crypt.js"></script>
+    <!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>-->
+</head>
+<body>
+<div class="container">
+    <div class="form-container">
+        <h1 id="main_text">SSL证书助手 - 登录</h1>
+        <form action="" method="post" enctype="multipart/form-data">
+            <div class="input-row">
+                <div class="input-group" id="mail_text">
+                    <label>
+                        <input id="mail_data" type="text" name="mail" placeholder="登录邮箱" required>
+                    </label>
+                </div>
+            </div>
+
+            <div class="input-row" id="send_code">
+                <div class="input-group">
+                    <label style="display: flex;gap: 10px;">
+                        <input id="code_data" type="text" name="code" placeholder="验证代码" style="width: 70%"
+                               required>
+                        <button type="button" class="RoyalBlue-btn" style="flex-grow: 1" onclick="onCode()">发送
+                        </button>
+                    </label>
+                </div>
+            </div>
+            <div class="input-row" id="pass_text">
+                <div class="input-group">
+                    <label>
+                        <input id="pass_data" type="password" name="pass" placeholder="登录密码" required>
+                    </label>
+                </div>
+            </div>
+            <div class="input-row" id="pass_next">
+                <div class="input-group">
+                    <label>
+                        <input id="next_data" type="password" name="pass" placeholder="确认密码" required>
+                    </label>
+                </div>
+            </div>
+            <div id="login_btn" class="buttons">
+                <button type="button" class="LimeGreen-btn" onclick="onPost()">登录</button>
+                <button type="button" class="RoyalBlue-btn" onclick="location.href='/login.html?register=1';">注册
+                </button>
+            </div>
+            <div id="apply_btn" class="buttons">
+                <button type="button" class="LimeGreen-btn" onclick="onAdds()">注册</button>
+                <button type="button" class="DimGray01-btn" onclick="location.href='/login.html';">返回</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+<script>
+    // 准备加密组件 =======================================
+    // import CryptoJS from 'crypto-js';
+    let nonce = "";
+
+    // 页面载入函数 #######################################
+    function onLoad(name) {
+        const queryString = window.location.search;
+        // 使用URLSearchParams解析查询字符串 ==============
+        const urlParams = new URLSearchParams(queryString);
+        // 判断是否包含tokens参数 =========================
+        if (!urlParams.has('register')) {
+            // 获取更新元素并删除 =========================
+            document.getElementById('send_code').remove();
+            document.getElementById('pass_next').remove();
+            document.getElementById('apply_btn').remove();
+        } else {
+            document.getElementById('login_btn').remove();
+            let bu = document.getElementById('main_text');
+            bu.innerText = "SSL证书助手 - 注册"
+        }
+    }
+
+    async function onCode() {
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        // 使用URLSearchParams解析查询字符串 ======================
+        let mail_data = document.getElementById("mail_data").value;
+        let post_urls = "/nonce/?email=" + mail_data
+        if (urlParams.has('register')) post_urls += "&setup=1"
+        // 检查邮箱 ===============================================
+        if (!isValidEmail(mail_data)) return false;
+        // 获取代码 ===============================================
+        try {
+            const response = await fetch(post_urls, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json',}
+            }); // 检查请求是否成功 -------------------------------
+            if (!response.ok) window.alert(response.message);
+            // 解析响应内容 =======================================
+            const responseData = await response.json();
+            if (urlParams.has('register'))
+                window.alert(responseData["nonce"]);
+            else nonce = responseData["nonce"];
+            return responseData;
+        } catch (error) {
+            window.alert('获取失败: ' + error);
+        }
+    }
+
+    // 提交表单函数 #######################################################
+    async function onPost(name) {
+        // 获取内容 =======================================================
+        let mail_data = document.getElementById("mail_data").value;
+        let pass_data = document.getElementById("pass_data").value;
+        // 检查内容 =======================================================
+        if (!isValidEmail(mail_data)) return false;
+        await onCode();
+        let pass_hash = await sha256(pass_data); // 登录密码的SHA256
+        let pass_hmac = await mac256(pass_hash, nonce);
+        console.log(pass_hash,nonce, pass_hmac);
+        // 发起请求 =======================================================
+        let new_url = "/login/?email=" + mail_data + "&token=" + pass_hmac;
+        try {
+            const response = await fetch(new_url, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json',}
+            }); // 检查请求是否成功 -------------------------------
+            // 解析响应内容 =======================================
+            const responseData = await response.json();
+            if(response.status === 200)
+                window.location.href = "/panel/"
+            else window.alert('登陆失败: 用户名或密码错误');
+        } catch (error) {
+            window.alert('获取失败: ' + error);
+        }
+    }
+
+    // 提交表单函数 #######################################################
+    async function onAdds(name) {
+        let mail_data = document.getElementById("mail_data").value;
+        let pass_data = document.getElementById("pass_data").value;
+        let code_data = document.getElementById("code_data").value;
+        let next_data = document.getElementById("next_data").value;
+        // 判断密码是否一致 =======================================
+        if (!isValidEmail(mail_data)) return false;
+        if (next_data !== pass_data) {
+            window.alert("两次密码不一致");
+            return false;
+        }
+        // 加密内容 ================================================
+        let code_hash = await sha256(code_data); // 验证代码的SHA256
+        let pass_hash = await sha256(pass_data); // 登录密码的SHA256
+        let mail_code = await mac256(mail_data, code_hash) // 邮件的
+        let pass_code = await aes256(pass_hash, code_hash) // 密码的
+        // console.log("pass_data", pass_data);
+        // console.log("code_data", code_data);
+        // console.log("code_hash", code_hash);
+        // console.log("pass_hash", pass_hash);
+        // console.log("mail_code", mail_code);
+        // console.log("pass_code", pass_code);
+        // 发起请求 ================================================
+        window.location.href = "/setup/" + "?email=" + mail_data +
+            "&codes=" + mail_code + "&crypt=" + pass_code;
+        // window.open("/setup/" + "?email=" + mail_data +
+        //     "&codes=" + mail_code + "&crypt=" + pass_code);
+    }
+
+    // 计算 BASE-SHA256 ============================================
+    async function sha256(data_text) {
+        return CryptoJS.SHA256(data_text).toString(CryptoJS.enc.Hex);
+    }
+
+    // 生成 HMAC-SHA256 ============================================
+    async function mac256(data_text, keys_text) {
+        let temp_data = CryptoJS.HmacSHA256(data_text, keys_text)
+        return temp_data.toString(CryptoJS.enc.Hex);
+    }
+
+    // 生成 Bcrypt-H256 =============================================
+    async function bcrypt(data_text) {
+        const salt_nums = 10;
+        const salt_data = await bcrypt.genSalt(salt_nums);
+        return await bcrypt.hash(data_text, salt_data);
+    }
+
+    // 加密 AES-256-CBC =============================================
+    async function aes256(data_text, keys_text) {
+        const keys_word = CryptoJS.enc.Hex.parse(keys_text);
+        const data_word = CryptoJS.enc.Hex.parse(data_text);
+        const save_word = CryptoJS.AES.encrypt(
+            data_word, keys_word,
+            {
+                mode: CryptoJS.mode.ECB,
+                padding: CryptoJS.pad.Pkcs7
+            }
+        );
+        const save_text = save_word.toString(CryptoJS.format.Hex);
+        // ==========================================================
+        // console.log("data_word", data_text);
+        // console.log("data_text", data_text);
+        // console.log("keys_word", keys_word);
+        // console.log("keys_text", keys_text);
+        // console.log("save_word", save_word);
+        // console.log("save_text", save_text);
+        // 返回组合后的字符串 ==============
+        return save_text;
+    }
+
+    // 加密 XOR KEY 256 =============================================
+    async function xor256(data_text, keys_text) {
+        const max_len = Math.max(data_text.length, keys_text.length);
+        data_text = data_text.padEnd(max_len, '0');
+        keys_text = keys_text.padEnd(max_len, '0');
+        let save_text = '';
+        for (let i = 0; i < max_len; i += 2) {
+            let data_word = parseInt(data_text.substr(i, 2), 16);
+            let keys_word = parseInt(keys_text.substr(i, 2), 16);
+            let save_word = data_word ^ keys_word;
+            save_text += save_word.toString(16).padStart(2, '0');
+        }
+    }
+
+    function isValidEmail(email) {
+        if (email.length <= 0) {
+            window.alert("请填写邮箱地址");
+            return false;
+        }
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const result = regex.test(email);
+        if (!result) {
+            window.alert("请正确填写邮箱");
+        }
+        return result
+    }
+
+    // 页面加载逻辑 ##################################################
+    onLoad();
+</script>
+</html>
