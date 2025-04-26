@@ -308,3 +308,238 @@ input:checked + .switch label:before {
 .add-btn:hover {
     background-color: #3a7bc8;
 }
+
+/* 侧边栏 */
+.sidebar {
+    /*height: 80%;*/
+    margin-right: 50px;
+    /*margin-top: 10px;*/
+    /*margin-bottom: auto;*/
+    /*width: 200px;*/
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+
+}
+
+.content {
+    /*height: 80%;*/
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+    /*align-items: flex-start; !* 使子元素的起始对齐到容器的顶部 *!*/
+}
+
+.sidebar-item {
+    padding: 15px 20px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-item:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.sidebar-item.active {
+    background-color: rgba(74, 144, 226, 0.2);
+    color: #4a90e2;
+    font-weight: bold;
+    border-left: 3px solid #4a90e2;
+}
+
+/* 用户头像和下拉菜单 */
+.user-profile {
+    position: relative;
+    cursor: pointer;
+}
+
+.avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 10px;
+}
+
+.email {
+    display: inline-block;
+    font-size: 14px;
+    color: #333;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    width: 150px;
+    display: none;
+    z-index: 100;
+}
+
+.dropdown-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.dropdown-item.active {
+    background-color: rgba(74, 144, 226, 0.2);
+    color: #4a90e2;
+}
+
+.dropdown-item.logout {
+    color: #dc3545;
+}
+
+/* 图表区域 */
+.charts-section {
+    margin-bottom: 30px;
+}
+
+.chart-container {
+
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+
+}
+
+.chart {
+    flex: 1;
+    min-width: 200px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    margin: 10px;
+    text-align: center;
+}
+
+.pie-chart {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin: 10px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* 订单区域 */
+.orders-section {
+    margin-bottom: 30px;
+}
+
+.orders-section h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.orders-table th, .orders-table td {
+    padding: 15px;
+    text-align: left;
+}
+
+.orders-table th {
+    /*background-color: #f9f9f9;*/
+    font-weight: bold;
+    color: #555;
+}
+
+.status-active {
+    color: #28a745;
+}
+
+.status-pending {
+    color: #ffc107;
+}
+
+.status-expired {
+    color: #dc3545;
+}
+
+.details-btn {
+    padding: 5px 10px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.details-btn:hover {
+    background-color: #3a7bc8;
+}
+
+/* 底部按钮 */
+.bottom-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 200px; /* 设置侧边栏的宽度 */
+        background-color: #f5f5f5; /* 侧边栏背景颜色 */
+        padding: 20px 0; /* 内边距 */
+        align-self: flex-start; /* 使侧边栏靠上对齐 */
+    }
+
+    .chart {
+        min-width: 100%;
+    }
+
+    .bottom-buttons {
+        flex-wrap: wrap;
+    }
+
+    .RoyalBlue-btn, .DimGray01-btn {
+        margin: 5px;
+        flex: 1 0 45%;
+    }
+}

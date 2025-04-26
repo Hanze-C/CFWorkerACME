@@ -45,7 +45,4 @@ CREATE TABLE Authy
 CREATE UNIQUE INDEX "Users_mail_key" ON "Users" ("mail");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Users_keys_key" ON "Users" ("keys");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Authy_hash_key" ON "Authy" ("hash");

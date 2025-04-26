@@ -2,9 +2,8 @@ import {Context, Hono} from 'hono'
 import {Resend} from 'resend';
 import CryptoJS from 'crypto-js';
 import {generateKeyPairSync} from 'crypto';
-import bcrypt from 'bcryptjs';
-import {updateDB, insertDB, selectDB, deleteDB} from './datas'
-import {getCookie, getSignedCookie, setCookie, setSignedCookie, deleteCookie,} from 'hono/cookie'
+import {deleteDB, insertDB, selectDB, updateDB} from './datas'
+import {deleteCookie, getCookie, getSignedCookie, setCookie, setSignedCookie,} from 'hono/cookie'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
 // import {CookieOptions} from "hono/dist/types/utils/cookie";
@@ -34,8 +33,7 @@ app.get('/setup/', async (c) => {
     let mail_code_db = mail_data_db.toString(CryptoJS.enc.Hex);
     if (mail_code_db == mail_code_in) { // 验证通过，要保存密码
         try { // 解密密码sha256 ----------------------------------------------------------
-            const save_text = pass_code_in;
-            const save_word = CryptoJS.enc.Hex.parse(save_text);
+            const save_word = CryptoJS.enc.Hex.parse(pass_code_in);
             const save_base = CryptoJS.enc.Base64.stringify(save_word);
             const keys_word = CryptoJS.enc.Hex.parse(code_hash_db);
             // ===========================================================================
@@ -91,7 +89,7 @@ app.get('/login/', async (c) => {
     let user_data_db = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0) return c.json({flags: 0}, 401);
     let user_data_in = user_data_db[0]
-    const pass_hmac_db = await mac256(user_data_in['pass'], user_data_in['code']);
+    const pass_hmac_db = await hmac256(user_data_in['pass'], user_data_in['code']);
     console.log(user_data_in['pass'], user_data_in['code'], pass_hmac_in, pass_hmac_db);
     if (pass_hmac_db != pass_hmac_in) return c.json({flags: 0}, 401);
     // 密码正确设置 Cookie ================================================================
@@ -225,7 +223,7 @@ async function userAuth(c: Context) {
 }
 
 // 生成 HMAC-SHA256 =====================================================
-async function mac256(data_text: string, keys_text: string) {
+async function hmac256(data_text: string, keys_text: string) {
     let temp_data = CryptoJS.HmacSHA256(data_text, keys_text)
     return temp_data.toString(CryptoJS.enc.Hex);
 }
