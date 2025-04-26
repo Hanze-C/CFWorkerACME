@@ -8,16 +8,48 @@
     <link href="/static/style.css" rel="stylesheet"/>
     <style>
         /* 自定义补充样式 */
-        .domain-row {gap: 15px; margin-bottom: 15px;}
-        .nowrap {white-space: nowrap;}
-        .flex-grow {flex-grow: 1;}
-        .form-switch {padding-left: 3.5em;}
+        .domain-row {
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+
+        .flex-grow {
+            flex-grow: 1;
+        }
+
+        .form-switch {
+            padding-left: 3.5em;
+        }
+
         /* 新增样式：确保在小屏幕下域名设置部分可以换行 */
-        .domain-setting {display: flex; flex-wrap: wrap; gap: 15px;}
-        .domain-setting > div {flex: 1 1 auto;}
-        .verification-details {display: none; margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;}
-        .btn-verify {}
-        .toggle-section {margin-top: 10px;}
+        .domain-setting {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .domain-setting > div {
+            flex: 1 1 auto;
+        }
+
+        .verification-details {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .btn-verify {
+        }
+
+        .toggle-section {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -53,7 +85,8 @@
                 </div>
 
                 <div class="toggle-section" style="">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleDetails(this)">显示详细信息</button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="toggleDetails(this)">显示详细信息
+                    </button>
                     <div class="verification-details">
                         <p><strong>验证失败原因：</strong> DNS记录未正确添加或传播延迟</p>
                         <p><strong>验证要求：</strong> 请添加以下TXT记录到您的DNS设置中：</p>
@@ -65,82 +98,84 @@
                 </div>
             </div>
 
-        <!-- 证书申请成功信息部分 -->
-        <div class="form-section" style="display:none;" id="certificate-success">
-            <h2>证书申请成功</h2>
-            <div class="card">
-                <div class="card-body">
-                    <p><strong>证书域名：</strong> *.example.com</p>
-                    <p><strong>开始日期：</strong> 2024-10-15</p>
-                    <p><strong>结束日期：</strong> 2025-01-15</p>
-                    <p><strong>证书提供商：</strong> Let's Encrypt</p>
-                    <p><strong>加密算法：</strong> RSA 2048</p>
-                    <p><strong>主体内容：</strong> CN=example.com, O=Example Company, L=Beijing, ST=Beijing, C=CN</p>
+            <!-- 证书申请成功信息部分 -->
+            <div class="form-section" style="display:none;" id="certificate-success">
+                <h2>证书申请成功</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <p><strong>证书域名：</strong> *.example.com</p>
+                        <p><strong>开始日期：</strong> 2024-10-15</p>
+                        <p><strong>结束日期：</strong> 2025-01-15</p>
+                        <p><strong>证书提供商：</strong> Let's Encrypt</p>
+                        <p><strong>加密算法：</strong> RSA 2048</p>
+                        <p><strong>主体内容：</strong> CN=example.com, O=Example Company, L=Beijing, ST=Beijing, C=CN</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 底部操作按钮 -->
-        <div class="d-flex gap-2 justify-content-end mt-4">
-            <button type="button" class="btn btn-primary" id="verify-all">验证全部</button>
-            <button type="button" class="btn btn-warning" id="cancel-application">撤销申请</button>
-            <button type="button" class="btn btn-info" id="reapply">重新申请</button>
-            <button type="button" class="btn btn-danger" id="revoke-certificate" style="display:none;">吊销证书</button>
-            <button type="button" class="btn btn-success" id="download-certificate" style="display:none;">下载证书</button>
-            <button type="button" class="btn btn-secondary" id="delete-key" style="display:none;">删除密钥</button>
+            <!-- 底部操作按钮 -->
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" class="btn btn-primary" id="verify-all">验证全部</button>
+                <button type="button" class="btn btn-secondary" id="cancel-application">撤销申请</button>
+                <button type="button" class="btn btn-warning" id="reapply">重新申请</button>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" class="btn btn-success" id="download-certificate">下载证书</button>
+                <button type="button" class="btn btn-warning" id="delete-key">删除密钥</button>
+                <button type="button" class="btn btn-danger" id="revoke-certificate">吊销证书</button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    // 切换验证详情显示/隐藏
-    function toggleDetails(button) {
-        const details = button.nextElementSibling;
-        if (details.style.display === 'block') {
-            details.style.display = 'none';
-            button.textContent = '显示详细信息';
-        } else {
-            details.style.display = 'block';
-            button.textContent = '隐藏详细信息';
+    <script>
+        // 切换验证详情显示/隐藏
+        function toggleDetails(button) {
+            const details = button.nextElementSibling;
+            if (details.style.display === 'block') {
+                details.style.display = 'none';
+                button.textContent = '显示详细信息';
+            } else {
+                details.style.display = 'block';
+                button.textContent = '隐藏详细信息';
+            }
         }
-    }
 
-    // 模拟验证按钮点击事件
-    document.querySelectorAll('.btn-verify').forEach(button => {
-        button.addEventListener('click', function() {
-            alert('正在验证域名，请稍候...');
-            // 这里可以添加实际的验证逻辑，比如发送POST请求
+        // 模拟验证按钮点击事件
+        document.querySelectorAll('.btn-verify').forEach(button => {
+            button.addEventListener('click', function () {
+                alert('正在验证域名，请稍候...');
+                // 这里可以添加实际的验证逻辑，比如发送POST请求
+            });
         });
-    });
 
-    // 模拟底部按钮点击事件
-    document.getElementById('verify-all').addEventListener('click', function() {
-        alert('开始验证所有域名...');
-    });
+        // 模拟底部按钮点击事件
+        document.getElementById('verify-all').addEventListener('click', function () {
+            alert('开始验证所有域名...');
+        });
 
-    document.getElementById('cancel-application').addEventListener('click', function() {
-        if(confirm('确定要撤销证书申请吗？')) {
-            alert('正在撤销申请...');
+        document.getElementById('cancel-application').addEventListener('click', function () {
+            if (confirm('确定要撤销证书申请吗？')) {
+                alert('正在撤销申请...');
+            }
+        });
+
+        document.getElementById('reapply').addEventListener('click', function () {
+            if (confirm('确定要重新申请证书吗？')) {
+                alert('正在重新申请...');
+            }
+        });
+
+        // 假如证书申请成功，可以调用以下函数显示成功信息
+        function showCertificateSuccess() {
+            document.querySelector('.form-section:first-child').style.display = 'none'; // 隐藏验证部分
+            document.getElementById('certificate-success').style.display = 'block'; // 显示成功信息
+            document.getElementById('verify-all').style.display = 'none';
+            document.getElementById('cancel-application').style.display = 'none';
+            document.getElementById('reapply').style.display = 'none';
+            document.getElementById('revoke-certificate').style.display = 'inline-block';
+            document.getElementById('download-certificate').style.display = 'inline-block';
+            document.getElementById('delete-key').style.display = 'inline-block';
         }
-    });
-
-    document.getElementById('reapply').addEventListener('click', function() {
-        if(confirm('确定要重新申请证书吗？')) {
-            alert('正在重新申请...');
-        }
-    });
-
-    // 假如证书申请成功，可以调用以下函数显示成功信息
-    function showCertificateSuccess() {
-        document.querySelector('.form-section:first-child').style.display = 'none'; // 隐藏验证部分
-        document.getElementById('certificate-success').style.display = 'block'; // 显示成功信息
-        document.getElementById('verify-all').style.display = 'none';
-        document.getElementById('cancel-application').style.display = 'none';
-        document.getElementById('reapply').style.display = 'none';
-        document.getElementById('revoke-certificate').style.display = 'inline-block';
-        document.getElementById('download-certificate').style.display = 'inline-block';
-        document.getElementById('delete-key').style.display = 'inline-block';
-    }
-</script>
+    </script>
 </body>
 </html>
