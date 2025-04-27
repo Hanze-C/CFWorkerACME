@@ -54,8 +54,8 @@ export async function insertDB(c: Context, table: string, values: Record<string,
     let sql = `INSERT INTO ${table} (${columns.join(', ')})
                VALUES (${placeholders.join(', ')})`;
 
-    // console.log('SQL:', sql);
-    // console.log('Params:', params);
+    console.log('SQL:', sql);
+    console.log('Params:', params);
 
     try {
         // 执行插入操作

@@ -1,231 +1,76 @@
-import {Context, Hono} from 'hono'
-import {Resend} from 'resend';
-import CryptoJS from 'crypto-js';
-import {generateKeyPairSync} from 'crypto';
-import {deleteDB, insertDB, selectDB, updateDB} from './datas'
-import {deleteCookie, getCookie, getSignedCookie, setCookie, setSignedCookie,} from 'hono/cookie'
+import * as users from './users';
+import * as codes from './codes';
+import * as saves from './saves';
+import * as local from "hono/cookie";
+import {Hono} from 'hono'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
-// import {CookieOptions} from "hono/dist/types/utils/cookie";
+
 
 // 绑定数据 ###############################################################################
 type Bindings = { DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String }
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
 
+// 获取信息 ###############################################################################
+app.get('/users', async (c) => {
+    return c.json({})
+});
+
 // 获取种子 ###############################################################################
 app.get('/nonce/', async (c) => {
-    return c.json(await getNonce(c));
+    return c.json(await users.getNonce(c));
 });
+
+// 核查状态 ###############################################################################
+app.get('/panel/', async (c) => {
+    if (!await users.userAuth(c)) c.redirect("/login.html", 302);
+    return c.redirect("/panel.html", 302);
+})
+
+
+// 核查状态 ###############################################################################
+app.use('/apply/', async (c) => {
+    if (c.req.method !== 'POST') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
+    if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
+    // 读取数据
+    try {
+        let upload_json = await c.req.json();
+        console.log(upload_json);
+        await saves.insertDB(c, "Apply", {
+            uuid: await users.newNonce(16),
+            mail: local.getCookie(c, 'mail'),
+            sign: upload_json['globals']['ca'],
+            type: upload_json['globals']['encryption'],
+            auto: upload_json['globals']['auto_renew'],
+            flag: 0,
+            time: Date.now(),
+            main: JSON.stringify(upload_json['subject']),
+            list: JSON.stringify(upload_json['domains']),
+            keys: "",
+            cert: "",
+        })
+    } catch (error) {
+        return c.json({"flags": 3, "texts": "请求数据无效: " + error}, 400);
+    }
+    return c.json({"flags": 0, "texts": "证书申请成功", "order": "000000"}, 200);
+})
+
 
 // 用户注册 ###############################################################################
 app.get('/setup/', async (c) => {
-    let mail_data_in: string = <string>c.req.query('email'); // 邮件明文索引用户
-    let mail_code_in: string = <string>c.req.query('codes'); // 邮件+验证码 HMAC
-    let pass_code_in: string = <string>c.req.query('crypt'); // 密码+验证码 AES2
-    // 校验验证码 ========================================================================
-    let user_data_db = await getUsers(c, mail_data_in);
-    if (Object.keys(user_data_db).length <= 0)
-        return c.json({error: '请先发送邮件验证码'}, 200);
-    let user_data_in = user_data_db[0]
-    let code_hash_db = CryptoJS.SHA256(user_data_in["code"]).toString(CryptoJS.enc.Hex);
-    let mail_data_db = CryptoJS.HmacSHA256(mail_data_in, code_hash_db) // 邮箱
-    let mail_code_db = mail_data_db.toString(CryptoJS.enc.Hex);
-    if (mail_code_db == mail_code_in) { // 验证通过，要保存密码
-        try { // 解密密码sha256 ----------------------------------------------------------
-            const save_word = CryptoJS.enc.Hex.parse(pass_code_in);
-            const save_base = CryptoJS.enc.Base64.stringify(save_word);
-            const keys_word = CryptoJS.enc.Hex.parse(code_hash_db);
-            // ===========================================================================
-            // console.log("save_word", save_word);
-            // console.log("save_text", save_text);
-            // console.log("save_base", save_base);
-            // console.log("keys_word", keys_word);
-            // console.log("keys_text", code_hash_db);
-            // 执行解密 ==================================================================
-            const decrypted = CryptoJS.AES.decrypt(save_base, keys_word, {
-                mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7
-            });
-            const data_text = decrypted.toString(CryptoJS.enc.Hex);
-            // console.log("data_word:", decrypted);
-            // console.log("data_text:", data_text);
-            // 存储密码 =====================================================
-            // const pass_salt = bcrypt.genSaltSync(10);
-            // const pass_save = bcrypt.hashSync(data_text, pass_salt);
-            // console.log("pass_salt:", pass_salt);
-            // console.log("pass_save:", pass_save);
-
-
-            const {publicKey, privateKey} = generateKeyPairSync(
-                'ec', {namedCurve: 'prime256v1'});
-            await updateDB(c, "Users",
-                {
-                    code: "",
-                    flag: "1",
-                    keys: privateKey.export({type: 'pkcs8', format: 'pem'}),
-                    // pass: pass_save,
-                    pass: data_text,
-                    apis: await newNonce(c, 16),
-                    time: Date.now()
-                },
-                {mail: mail_data_in,}
-            );
-
-            return c.redirect("/login.html", 302);
-            // return c.json({error: 'OK'}, 200);
-        } catch (error) {
-            return c.json({error: 'Decryption Failed, ' + error}, 400);
-        }
-    } else { // 否则验证码错误，验证失败 ==================================================
-        return c.json({error: 'Error SMS Code'}, 401);
-    }
-
+    return users.userRegs(c);
 })
 
 // 用户登录 ###############################################################################
 app.get('/login/', async (c) => {
-    let pass_hmac_in: string = <string>c.req.query('token');
-    let mail_data_in: string = <string>c.req.query('email');
-    let user_data_db = await getUsers(c, mail_data_in);
-    if (Object.keys(user_data_db).length <= 0) return c.json({flags: 0}, 401);
-    let user_data_in = user_data_db[0]
-    const pass_hmac_db = await hmac256(user_data_in['pass'], user_data_in['code']);
-    console.log(user_data_in['pass'], user_data_in['code'], pass_hmac_in, pass_hmac_db);
-    if (pass_hmac_db != pass_hmac_in) return c.json({flags: 0}, 401);
-    // 密码正确设置 Cookie ================================================================
-    deleteCookie(c, 'users')
-    setCookie(c, 'mail', mail_data_in);
-    await setSignedCookie(c, 'auth', pass_hmac_in, user_data_in['pass']);
-    await updateDB(c, "Users",
-        {code: "",},
-        {mail: mail_data_in,}
-    );
-    return c.json({flags: 1});
-})
-
-// 核查状态 ###############################################################################
-app.get('/panel/', async (c) => {
-    // if(!await userAuth(c)) return c.redirect("/login.html", 302);
-    if (!await userAuth(c)) return c.text("error");
-    return c.text("ok");
+    return users.userPost(c)
 })
 
 // 退出登录 ###############################################################################
 app.get('/exits', async (c) => {
-    deleteCookie(c, 'users')
-    return c.redirect("/login.html", 302);
+    return users.userExit(c)
 })
 
-// 获取信息 ###############################################################################
-app.get('/users', async (c) => {
-
-});
-
-// 随机种子 ###############################################################################
-async function getNonce(c: Context, lens: number = 8) {
-    const email = <string>c.req.query('email');
-    const setup = <string>c.req.query('setup');
-    let user_db = await getUsers(c, email);
-    const nonce = await newNonce(c, lens);
-    // 注册新用户 ========================================================================
-    if (setup != undefined && setup.length > 0 &&
-        (setup == "1" || setup == "true")) {
-        lens = 8; // 邮件验证码要比登录加密验证码短
-        if (Object.keys(user_db).length > 0) {
-            let diff: number = Date.now() - user_db[0]["time"]
-            let mins: number = Math.floor((300000 - diff) / 60000 + 1)
-            if (user_db[0]["flag"] <= 0) {
-                if (diff >= 300000) await delUsers(c, email)
-                else return {"nonce": "操作过于频繁，请等" + mins + "分钟后再试"}
-            } else return {"nonce": "此邮箱已经注册，请直接登录，如忘记密码请重置"}
-        }
-        return await newUsers(c, email) // 新增真用户
-    }
-    if (Object.keys(user_db).length > 0) {
-        await updateDB(c, "Users",
-            {code: nonce,},
-            {mail: email,});
-    }
-    return {"nonce": nonce};
-}
-
-// 获取种子 ###############################################################################
-async function newNonce(c: Context, lens: number = 8): Promise<string> {
-    let charset = 'ABCDEFGHJKLMNPQRSTUWXY0123456789';
-    let results = '';
-    for (let i = 0; i < lens; i++) {
-        const randomIndex = Math.floor(Math.random() * charset.length);
-        results += charset[randomIndex];
-    }
-    return results;
-}
-
-// 获取用户 ###############################################################################
-async function getUsers(c: Context, email: string) {
-    console.log(email);
-    return await selectDB(c, "Users", {mail: email});
-}
-
-// 删除用户 ###############################################################################
-async function delUsers(c: Context, email: string) {
-    return await deleteDB(c, "Users", {mail: email,});
-}
-
-// 新增用户 ###############################################################################
-async function newUsers(c: Context, email: string) {
-    const nonce = await newNonce(c, 8);
-    await insertDB(c, "Users", {
-        mail: email,
-        code: nonce,
-        time: Date.now(),
-    });
-    return await codeSend(c, email, nonce)
-}
-
-// 发送验证 ###############################################################################
-async function codeSend(c: Context, mail: string, code: string) {
-    return await mailSend(c, mail, "SSL证书助手 - 邮件验证",
-        "您正在注册SSL证书助手平台，验证码为：" + code + "，五分钟内有效。")
-}
-
-// 发送邮件 ###############################################################################
-async function mailSend(c: Context, email: string, title: string, text: string) {
-    try {
-        const resend = new Resend(c.env.MAIL_KEYS);
-        const {data, error} = await resend.emails.send({
-            from: `SSL Helper<${c.env.MAIL_SEND}>`,
-            to: [email],
-            subject: title,
-            html: text,
-        });
-        if (error) {
-            return {"nonce": error.toString()};
-        }
-        return {"nonce": "邮件发送成功，请查收"};
-    } catch (error) {
-        console.error(error);
-        return {"nonce": error};
-    }
-}
-
-// 验证登录 ###############################################################################
-async function userAuth(c: Context) {
-    const user_mail = getCookie(c, 'mail')
-    console.log(user_mail);
-    if (!user_mail || user_mail.length <= 0) return false;
-    const user_data = (await getUsers(c, user_mail))[0];
-    if (Object.keys(user_data).length<=2) return false;
-    console.log(user_data);
-    const user_auth = await getSignedCookie(
-        c, user_data["pass"], 'auth')
-    console.log(user_auth);
-    return !(!user_auth || user_auth.length <= 0);
-}
-
-// 生成 HMAC-SHA256 =====================================================
-async function hmac256(data_text: string, keys_text: string) {
-    let temp_data = CryptoJS.HmacSHA256(data_text, keys_text)
-    return temp_data.toString(CryptoJS.enc.Hex);
-}
 
 export default app
