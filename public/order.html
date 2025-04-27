@@ -40,10 +40,18 @@
             display: none;
             margin-top: 10px;
             padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
+            background: rgba(248, 249, 250, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         }
 
+        .verification-info {
+            background: rgba(18, 129, 236, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
         .btn-verify {
         }
 
@@ -88,12 +96,11 @@
                     <button type="button" class="btn btn-info btn-sm" onclick="toggleDetails(this)">显示详细信息
                     </button>
                     <div class="verification-details">
-                        <p><strong>验证失败原因：</strong> DNS记录未正确添加或传播延迟</p>
-                        <p><strong>验证要求：</strong> 请添加以下TXT记录到您的DNS设置中：</p>
-                        <p>名称：__acme_challenge.example.com</p>
-                        <p>值：abc123def456ghi789jkl012mno345pqr678stu890vwx123yz</p>
-                        <p>类型：TXT</p>
-                        <p>TTL：600秒</p>
+                        <p><strong>失败原因：</strong> DNS记录未正确添加或SND存在生效延迟</p>
+                        <p><strong>验证要求：</strong> 请添加以下TXT记录到您的DNS解析设置：</p>
+                        记录名称：<p class="verification-info">__acme_challenge.example.com</p>
+                        记录类型：<p class="verification-info">TXT</p>
+                        记录内容：<p class="verification-info">abc123def456ghi789jkl012mno345pqr678stu890vwx123yz</p>
                     </div>
                 </div>
             </div>
