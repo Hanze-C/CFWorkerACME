@@ -2,13 +2,13 @@ import * as users from './users';
 import * as saves from './saves';
 import * as certs from './certs';
 import * as local from "hono/cookie";
-import {Context, Hono} from 'hono'
+import {Hono} from 'hono'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
 
 
 // 绑定数据 ###############################################################################
-type Bindings = { DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String }
+export type Bindings = { DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String }
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
 
@@ -45,7 +45,7 @@ app.use('/apply/', async (c) => {
             domain_save.push(domain_list[domain]);
         }
         // console.log(domain_save);
-        await saves.insertDB(c, "Apply", {
+        await saves.insertDB(c.env.DB, "Apply", {
             uuid: await users.newNonce(16),
             mail: local.getCookie(c, 'mail'),
             sign: upload_json['globals']['ca'],
@@ -82,7 +82,7 @@ app.get('/exits', async (c) => {
 
 // 退出登录 ###############################################################################
 app.get('/tests/', async (c) => {
-    await certs.Processing(c);
+    await certs.Processing(c.env);
     return c.json({})
 })
 
@@ -93,9 +93,10 @@ export default {
         return app.fetch(request, env, ctx);
     },
     async scheduled(controller: ScheduledController, env: Bindings, ctx: ExecutionContext) {
+        if (!controller) console.log(controller, ctx)
         console.log('Cron job is going to process');
         try {
-            await certs.Processing(null, env);
+            await certs.Processing(env);
         } catch (error) {
             console.error('Error when process cron jobs', error);
         }

@@ -1,10 +1,9 @@
-import {Context} from "hono";
-import {Bindings} from "hono/types";
-
 // 更新数据 ####################################################################
 export async function updateDB(
-    c: Context, table: string,
-    values: Record<string, any>, where: Record<string, any>): Promise<number> {
+    DB: D1Database, table: string,
+    values: Record<string, any>, where: Record<string, any>): Promise<D1Response & {
+    results: Record<string, unknown>[]
+}> {
     // 构建更新的列和值部分
     const setConditions: string[] = [];
     const whereConditions: string[] = [];
@@ -32,8 +31,7 @@ export async function updateDB(
 
     try {
         // 执行更新操作
-        const {changes} = await c.env.DB.prepare(sql).bind(...params).run();
-        return changes; // 返回受影响的行数
+        return await DB.prepare(sql).bind(...params).run();
     } catch (e) {
         console.error('Database error:', e);
         throw e; // 重新抛出错误以便调用者处理
@@ -42,8 +40,8 @@ export async function updateDB(
 
 // 插入数据 ####################################################################
 export async function insertDB(
-    c: Context, table: string,
-    values: Record<string, any>): Promise<number> {
+    DB: D1Database, table: string,
+    values: Record<string, any>): Promise<D1Response & { results: Record<string, unknown>[] }> {
     // 构建列名和占位符数组
     const columns: string[] = [];
     const placeholders: string[] = [];
@@ -64,8 +62,7 @@ export async function insertDB(
 
     try {
         // 执行插入操作
-        const {lastInsertRowid} = await c.env.DB.prepare(sql).bind(...params).run();
-        return lastInsertRowid; // 返回新插入记录的 ID
+        return await DB.prepare(sql).bind(...params).run();
     } catch (e) {
         console.error('Database error:', e);
         throw e; // 重新抛出错误以便调用者处理
@@ -124,7 +121,7 @@ export async function selectDB(
 
 // 删除数据 ###############################################################################
 export async function deleteDB(
-    c: Context, table: string,
+    DB: D1Database, table: string,
     where: Record<string, any>
 ): Promise<number> {
     const conditions: string[] = [];
@@ -148,8 +145,8 @@ export async function deleteDB(
     // console.log('Params:', params);
 
     try {
-        const {changes} = await c.env.DB.prepare(sql).bind(...params).run();
-        return changes;
+        await DB.prepare(sql).bind(...params).run();
+        return 0;
     } catch (e) {
         console.error('Database error:', e);
         throw e;
