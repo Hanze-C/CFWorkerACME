@@ -27,7 +27,8 @@ CREATE TABLE Apply
     main TEXT    NOT NULL, -- 申请证书的主体JSON数据存储位
     list TEXT    NOT NULL, -- 申请证书的域名列表和配置信息
     keys TEXT, -- 证书私钥文件 -- PEM格式 BASE64存储证书体
-    cert TEXT  -- 证书签署文件 -- PEM格式 BASE64存储证书体
+    cert TEXT, -- 证书签署文件 -- PEM格式 BASE64存储证书体
+    data TEXT  -- 证书数据
     -- Flag： 0-待处理 1-待验证 2-验证中 3-申请中 4-已成功
     -- Subject内容: { C: '', S: '', ST: '', O: '', E: '' }
     -- domains内容: [{
@@ -37,6 +38,16 @@ CREATE TABLE Apply
     --       verification: 'dns'
     --     }
     --   ],
+    -- data 内容 {
+    --   status: 'pending',
+    --   expires: '2025-05-01T09:00:00Z',
+    --   identifiers: [ { type: 'dns', value: 'example.com' } ],
+    --   authorizations: [
+    --     'https://xxxxxxxxxxxxxxxxxxxxx/'
+    --   ],
+    --   finalize: 'https://xxxxxxxxxxxxxxxxxxxxx/',
+    --   url: 'https://xxxxxxxxxxxxxxxxxxxxx/'
+    -- }
 );
 
 
