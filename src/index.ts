@@ -1,8 +1,8 @@
 import * as users from './users';
-import * as codes from './codes';
 import * as saves from './saves';
+import * as certs from './certs';
 import * as local from "hono/cookie";
-import {Hono} from 'hono'
+import {Context, Hono} from 'hono'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
 
@@ -36,7 +36,15 @@ app.use('/apply/', async (c) => {
     // 读取数据
     try {
         let upload_json = await c.req.json();
-        console.log(upload_json);
+        let domain_list = upload_json['domains'];
+        let domain_save = []
+        for (let domain in domain_list) {
+            // console.log(domain,domain_list[domain]);
+            domain_list[domain]["flag"] = 0;
+            domain_list[domain]["text"] = "";
+            domain_save.push(domain_list[domain]);
+        }
+        // console.log(domain_save);
         await saves.insertDB(c, "Apply", {
             uuid: await users.newNonce(16),
             mail: local.getCookie(c, 'mail'),
@@ -46,7 +54,7 @@ app.use('/apply/', async (c) => {
             flag: 0,
             time: Date.now(),
             main: JSON.stringify(upload_json['subject']),
-            list: JSON.stringify(upload_json['domains']),
+            list: JSON.stringify(domain_save),
             keys: "",
             cert: "",
         })
@@ -72,5 +80,24 @@ app.get('/exits', async (c) => {
     return users.userExit(c)
 })
 
+// 退出登录 ###############################################################################
+app.get('/tests/', async (c) => {
+    await certs.Processing(c);
+    return c.json({})
+})
 
-export default app
+app.fire()
+// 定时任务 ############################################################################################################
+export default {
+    async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+        return app.fetch(request, env, ctx);
+    },
+    async scheduled(controller: ScheduledController, env: Bindings, ctx: ExecutionContext) {
+        console.log('Cron job is going to process');
+        try {
+            await certs.Processing(null, env);
+        } catch (error) {
+            console.error('Error when process cron jobs', error);
+        }
+    },
+};

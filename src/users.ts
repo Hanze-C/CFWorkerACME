@@ -52,12 +52,12 @@ export async function newNonce(lens: number = 8): Promise<string> {
 // 获取用户 ###############################################################################
 export async function getUsers(c: Context, email: string) {
     // console.log(email);
-    return await saves.selectDB(c, "Users", {mail: email});
+    return await saves.selectDB(c.env.DB, "Users", {mail: {value: email}});
 }
 
 // 删除用户 ###############################################################################
 export async function delUsers(c: Context, email: string) {
-    return await saves.deleteDB(c, "Users", {mail: email,});
+    return await saves.deleteDB(c, "Users", {mail: {value: email},});
 }
 
 // 新增用户 ###############################################################################

@@ -1,7 +1,10 @@
 import {Context} from "hono";
+import {Bindings} from "hono/types";
 
-// 更新数据 #############################################################################################################################
-export async function updateDB(c: Context, table: string, values: Record<string, any>, where: Record<string, any>): Promise<number> {
+// 更新数据 ####################################################################
+export async function updateDB(
+    c: Context, table: string,
+    values: Record<string, any>, where: Record<string, any>): Promise<number> {
     // 构建更新的列和值部分
     const setConditions: string[] = [];
     const whereConditions: string[] = [];
@@ -37,8 +40,10 @@ export async function updateDB(c: Context, table: string, values: Record<string,
     }
 }
 
-// 插入数据 #############################################################################################################################
-export async function insertDB(c: Context, table: string, values: Record<string, any>): Promise<number> {
+// 插入数据 ####################################################################
+export async function insertDB(
+    c: Context, table: string,
+    values: Record<string, any>): Promise<number> {
     // 构建列名和占位符数组
     const columns: string[] = [];
     const placeholders: string[] = [];
@@ -54,8 +59,8 @@ export async function insertDB(c: Context, table: string, values: Record<string,
     let sql = `INSERT INTO ${table} (${columns.join(', ')})
                VALUES (${placeholders.join(', ')})`;
 
-    console.log('SQL:', sql);
-    console.log('Params:', params);
+    // console.log('SQL:', sql);
+    // console.log('Params:', params);
 
     try {
         // 执行插入操作
@@ -67,16 +72,32 @@ export async function insertDB(c: Context, table: string, values: Record<string,
     }
 }
 
-// 新增数据 #############################################################################################################################
-export async function selectDB(c: Context, table: string, where: Record<string, any>) {
+// 查找数据 ################################################################################
+export async function selectDB(
+    DB: D1Database,
+    table: string, where: Record<string, {
+        value: any,
+        op?: string
+    }>) {
     // 构建查询条件数组
     const conditions: string[] = [];
     const params: any[] = [];
 
-    for (const [key, value] of Object.entries(where)) {
-        // 使用 ? 作为占位符
-        conditions.push(`${key} = ?`);
-        params.push(value);
+    for (const [key, condition] of Object.entries(where)) {
+        let op = condition.op || '=';
+        if (op === 'LIKE') {
+            conditions.push(`${key} LIKE ?`);
+            params.push(`%${condition.value}%`);
+        } else if (op === 'NOT LIKE') {
+            conditions.push(`${key} NOT LIKE ?`);
+            params.push(`%${condition.value}%`);
+        } else if (op === '!=') {
+            conditions.push(`${key} != ?`);
+            params.push(condition.value);
+        } else {
+            conditions.push(`${key} = ?`);
+            params.push(condition.value);
+        }
     }
 
     // 构建完整的 SQL 查询
@@ -92,19 +113,23 @@ export async function selectDB(c: Context, table: string, where: Record<string, 
 
     try {
         // 使用参数化查询
-        let {results} = await c.env.DB.prepare(sql).bind(...params).all();
+        let {results} = await DB.prepare(sql).bind(...params).all();
         return results;
+
     } catch (e) {
         console.error('Database error:', e);
         return [];
     }
 }
 
-// 删除数据 #############################################################################################################################
-export async function deleteDB(c: Context, table: string, where: Record<string, any>): Promise<number> {
+// 删除数据 ###############################################################################
+export async function deleteDB(
+    c: Context, table: string,
+    where: Record<string, any>
+): Promise<number> {
     const conditions: string[] = [];
     const params: any[] = [];
-    if(Object.keys(where).length <= 0) {
+    if (Object.keys(where).length <= 0) {
         return 0;
     }
     for (const [key, value] of Object.entries(where)) {
@@ -112,7 +137,9 @@ export async function deleteDB(c: Context, table: string, where: Record<string, 
         params.push(value);
     }
 
-    let sql = `DELETE FROM ${table} WHERE 1 = 1`;
+    let sql = `DELETE
+               FROM ${table}
+               WHERE 1 = 1`;
     if (conditions.length > 0) {
         sql += ' AND ' + conditions.join(' AND ');
     }
@@ -121,7 +148,7 @@ export async function deleteDB(c: Context, table: string, where: Record<string, 
     // console.log('Params:', params);
 
     try {
-        const { changes } = await c.env.DB.prepare(sql).bind(...params).run();
+        const {changes} = await c.env.DB.prepare(sql).bind(...params).run();
         return changes;
     } catch (e) {
         console.error('Database error:', e);

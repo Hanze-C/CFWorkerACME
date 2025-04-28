@@ -1,7 +1,11 @@
 /* 手动设置字体链接 */
 @font-face {
     font-family: 'MapleMonoNL';
-    src: url('/static/maple.ttf');
+    src: url('/static/maple-min.ttf');
+}
+
+* {
+    font-family: MapleMonoNL, sans-serif;
 }
 
 body {
@@ -542,4 +546,33 @@ input:checked + .switch label:before {
         margin: 5px;
         flex: 1 0 45%;
     }
+}
+
+/* 自定义补充样式 */
+.domain-row {
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.flex-grow {
+    flex-grow: 1;
+}
+
+.form-switch {
+    padding-left: 3.5em;
+}
+
+/* 新增样式：确保在小屏幕下域名设置部分可以换行 */
+.domain-setting {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.domain-setting > div {
+    flex: 1 1 auto;
 }
