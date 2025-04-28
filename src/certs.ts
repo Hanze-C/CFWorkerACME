@@ -1,9 +1,10 @@
 import * as acme from 'acme-client';
 import * as saves from './saves'
+import * as query from "./query";
 import {Bindings} from './index'
-import {a} from "xior/xior-D_RKcIOK";
-import * as rfc8555 from "acme-client/types/rfc8555";
-import {Order} from "acme-client";
+import {Authorization} from "acme-client";
+import {Challenge} from "acme-client/types/rfc8555";
+
 
 const ssl_provider: Record<string, any> = {
     "lets-encrypt": acme.directory.letsencrypt.staging,
@@ -15,7 +16,7 @@ const ssl_provider: Record<string, any> = {
 // 整体处理进程 ====================================================================================
 export async function Processing(env: Bindings) {
     let order_list: any = await saves.selectDB(env.DB, "Apply", {flag: {value: 4, op: "!="}});
-    for (const id in order_list) { // 获取信息 =======================
+    for (const id in order_list) { // 获取信息 =====================================================
         let order_info = order_list[id]; // 获取当前订单详细情况
         let order_mail = order_info['mail']; // 当前订单用户邮箱
         let order_user: any = (await saves.selectDB( // 查询申请者信息
@@ -27,16 +28,16 @@ export async function Processing(env: Bindings) {
     }
 }
 
-// 新增证书订单 ====================================================================================
+// 新增证书订单 =====================================================================================
 export async function newApply(env: Bindings, order_user: any, order_info: any) {
-
+    // 初始化域名信息 =================================
     let accountPrivate = order_user['keys'];
     let certificateCSR = "";
     let clientsMessage = new acme.Client({
         directoryUrl: ssl_provider[order_info['sign']],
         accountKey: accountPrivate,
     });
-    // 处理域名信息 ===================================================================================================
+    // 处理域名信息 =================================================================================
     let domainsListCSR = [];
     let domainsListSSL = [];
     let domain_all = JSON.parse(order_info['list']);
@@ -44,11 +45,17 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
         const domain_now = domain_all[uid];
         if (domain_now['wildcard']) {
             domainsListCSR.push("*." + domain_now['domain']);
-            domainsListSSL.push({type: domain_now['verification'].split("-")[0], value: "*." + domain_now['domain']});
+            domainsListSSL.push({
+                type: domain_now['verification']
+                    .split("-")[0], value: "*." + domain_now['domain']
+            });
         }
         if (!domain_now['wildcard'] || domain_now['include_root']) {
             domainsListCSR.push(domain_now['domain']);
-            domainsListSSL.push({type: domain_now['verification'].split("-")[0], value: domain_now['domain']});
+            domainsListSSL.push({
+                type: domain_now['verification']
+                    .split("-")[0], value: domain_now['domain']
+            });
         }
     }
     // console.log(domainsListCSR, domainsListSSL);
@@ -85,6 +92,8 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
 
 // 自动验证代理 ====================================================================================
 export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) {
+
+
     // try {
     //     const response = await fetch(
     //         `https://api.cloudflare.com/client/v4/zones/${process.env.ZONE_ID}/dns_records`,
@@ -133,17 +142,22 @@ export async function dnsCheck(env: Bindings, order_user: any, order_info: any) 
     }
     orders_data = await client_data.getOrder(orders_data); // 获取授权信息
     // console.log(orders_data);
-    let author_list = await client_data.getAuthorizations(orders_data); // 获取授权信息
+    let author_list: Authorization[] = await client_data.getAuthorizations(orders_data); // 获取授权信息
     // console.log(author_list);
     for (const author_data of author_list) {
-        // console.log(author_data);
-        const challenge = author_data.challenges.find(c => c.type === "dns-01");
+        console.log(author_data);
+        // 待验证信息 =====================================
+        const author_info: any = author_data['identifier'];
+        const author_name: string = author_info['value'];
+        const author_type: string = author_info['type'];
+        const challenge: Challenge | undefined = author_data.challenges.find(c => c.type === "dns-01");
+        if (challenge == undefined) {
+            continue
+        }
         const keyAuthorization = await client_data.getChallengeKeyAuthorization(challenge);
         console.log("keyAuthorization: ", challenge);
         const domain = '_acme-challenge.524229.xyz';
-        const dohServerUrl = 'https://dns.google/resolve'; // 或 'https://cloudflare-dns.com/dns-query'
-
-        await queryTxtRecord(domain, dohServerUrl).then((records) => {
+        await query.queryDNS(domain).then((records) => {
             console.log('TXT Records for', domain, ':');
             records.forEach((record) => {
                 console.log(record);
@@ -171,17 +185,6 @@ export async function dnsCheck(env: Bindings, order_user: any, order_info: any) 
         // await client_data.verifyChallenge(author_data, author_data);
     }
 
-
-    // const challenge = authz.challenges.find(c => c.type === 'http-01');
-    // // 获取验证所需的信息
-    // const keyAuthorization = await client.getChallengeKeyAuthorization(challenge);
-    // // 模拟验证设置
-    // const challengeCreateFn = async (authz, challenge, keyAuthorization) => {
-    //     // 这里应该包含设置验证的具体逻辑
-    // };
-    // const challengeRemoveFn = async (authz, challenge, keyAuthorization) => {
-    //     // 这里应该包含验证通过后清理的逻辑
-    // };
     // // 完成验证
     // await client.completeChallenge(challenge);
     // // 等待验证状态变为有效
@@ -196,60 +199,21 @@ export async function dnsCheck(env: Bindings, order_user: any, order_info: any) 
     // return { certificate, certificateKey };
 }
 
-interface DnsRecord {
-    name: string;
-    type: string;
-    TTL: number;
-    data: string;
-}
-
-interface DnsResponse {
-    Status: number;
-    Answer: {
-        name: string;
-        type: string;
-        TTL: number;
-        data: string;
-    }[];
-}
-
-async function queryTxtRecord(domain: string, dohServerUrl: string): Promise<DnsRecord[]> {
-    const params = new URLSearchParams({
-        name: domain,
-        type: 'TXT',
-    });
-
-    try {
-        const response = await fetch(`${dohServerUrl}?${params}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        let tmp = await response.json()
-        console.log(tmp)
-        const data: DnsResponse = tmp;
-
-        if (data.Status !== 0) {
-            throw new Error(`DNS query failed with status: ${data.Status}`);
-        }
-
-        const txtRecords = data.Answer
-            ?.filter((record) => record.type === 'TXT')
-            .map((record) => ({
-                name: record.name,
-                type: record.type,
-                TTL: record.TTL,
-                data: record.data,
-            }));
-
-        return txtRecords || [];
-    } catch (error) {
-        console.error('Error querying TXT record:', error);
-        return [];
-    }
-}
 
 // 完成证书申请 ====================================================================================
 export async function getCerts(env: Bindings, order_user: any, order_info: any) {
 
 }
 
+
+let temp = [
+    {
+        "name": "example.com",
+        "wild": true,
+        "root": true,
+        "type": "dns-self",
+        "flag": 0,
+        "text": "",
+        "auth": "",
+    }
+]

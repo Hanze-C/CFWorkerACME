@@ -28,8 +28,10 @@ CREATE TABLE Apply
     list TEXT    NOT NULL, -- 申请证书的域名列表和配置信息
     keys TEXT, -- 证书私钥文件 -- PEM格式 BASE64存储证书体
     cert TEXT, -- 证书签署文件 -- PEM格式 BASE64存储证书体
-    data TEXT  -- 证书数据
-    -- Flag： 0-待处理 1-待验证 2-验证中 3-申请中 4-已成功
+    data TEXT, -- 证书数据
+    csrs TEXT  -- 证书请求
+    -- Flag： 0-待创建 1-待确认(用户提交) 2-处理(平台代理)
+    --        3-验证中 4-申请中(验证通过) 5-已成功 -1-失败
     -- Subject内容: { C: '', S: '', ST: '', O: '', E: '' }
     -- domains内容: [{
     --       domain: 'example.com',

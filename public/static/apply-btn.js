@@ -9,10 +9,10 @@
         const includeRootInput = row.querySelector('input[name^="domains"][name$="[include_root]"]');
         const verificationSelect = row.querySelector('select[name^="domains"][name$="[verification]"]');
         domainList.push({
-            domain: domainInput.value,
-            wildcard: wildcardInput.checked,
-            include_root: includeRootInput.checked,
-            verification: verificationSelect.value,
+            name: domainInput.value,
+            wild: wildcardInput.checked,
+            root: includeRootInput.checked,
+            type: verificationSelect.value,
         });
     });
     // 提取全局设置
