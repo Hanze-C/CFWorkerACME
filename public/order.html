@@ -75,7 +75,7 @@
         </div>
 
         <!-- 域名验证状态部分 -->
-        <div class="form-section">
+        <div class="form-section" id="domain-verification">
             <h2>域名验证</h2>
             <div id="domains-container">
                 <!-- 动态生成的域名列表将放在这里 -->
@@ -180,8 +180,6 @@
                 return; // 如果没有获取到有效订单数据，直接返回
             }
             setOrder(order);
-            if (order.flag >= 5) document.getElementById('cert_wait').remove();
-            else document.getElementById('cert_done').remove();
             if (order.flag >= 4 || order.flag <= 1) {
                 document.getElementById('verify-all').disabled = true;
                 if (order.flag !== -1)
@@ -196,6 +194,12 @@
             if (order.keys.length === 0) {
                 document.getElementById('delete-key').disabled = true;
             }
+            if (order.flag >= 5){
+                document.getElementById('cert_wait').remove();
+                document.getElementById('domain-verification').remove();
+            } 
+            else document.getElementById('cert_done').remove();
+
             // 为新添加的验证按钮绑定点击事件
             document.querySelectorAll('.btn-verify').forEach(button => {
                 button.addEventListener('click', function () {
@@ -235,7 +239,7 @@
                         </div>
 
                         <div class="d-flex align-items-center">
-                            <button type="button" class="btn btn-primary btn-sm ms-auto btn-verify" data-domain="${domain.name}">立即验证</button>
+                            <button type="button" disabled="disabled" class="btn btn-primary btn-sm ms-auto btn-verify" data-domain="${domain.name}">立即验证</button>
                         </div>
                     </div>
 
