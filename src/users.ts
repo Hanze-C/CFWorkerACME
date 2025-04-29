@@ -10,7 +10,7 @@ import {generateKeyPairSync} from "crypto";
 export async function getNonce(c: Context, lens: number = 8) {
     const email = <string>c.req.query('email');
     const setup = <string>c.req.query('setup');
-    let user_db = await getUsers(c, email);
+    let user_db: Record<string, any> = await getUsers(c, email);
     const nonce = await newNonce(lens);
     // 注册新用户 ========================================================================
     if (setup != undefined && setup.length > 0 &&
@@ -26,7 +26,7 @@ export async function getNonce(c: Context, lens: number = 8) {
         return await addUsers(c, email) // 新增真用户
     }
     if (Object.keys(user_db).length > 0) {
-        await saves.updateDB(c, "Users",
+        await saves.updateDB(c.env.DB, "Users",
             {code: nonce,},
             {mail: email,});
     }
@@ -57,18 +57,18 @@ export async function getUsers(c: Context, email: string) {
 
 // 删除用户 ###############################################################################
 export async function delUsers(c: Context, email: string) {
-    return await saves.deleteDB(c, "Users", {mail: {value: email},});
+    return await saves.deleteDB(c.env.DB, "Users", {mail: {value: email},});
 }
 
 // 新增用户 ###############################################################################
 export async function addUsers(c: Context, email: string) {
     const nonce = await newNonce(8);
-    await saves.insertDB(c, "Users", {
+    await saves.insertDB(c.env.DB, "Users", {
         mail: email,
         code: nonce,
         time: Date.now(),
     });
-    return await codeSend(c, email, nonce)
+    return await codeSend(c.env.DB, email, nonce)
 }
 
 
@@ -82,10 +82,10 @@ export async function userRegs(c: Context) {
     let mail_code_in: string = <string>c.req.query('codes'); // 邮件+验证码 HMAC
     let pass_code_in: string = <string>c.req.query('crypt'); // 密码+验证码 AES2
     // 校验验证码 ========================================================================
-    let user_data_db = await getUsers(c, mail_data_in);
+    let user_data_db: Record<string, any>[] = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0)
         return c.json({error: '请先发送邮件验证码'}, 200);
-    let user_data_in = user_data_db[0]
+    let user_data_in: Record<string, any> = user_data_db[0]
     let code_hash_db = CryptoJS.SHA256(user_data_in["code"]).toString(CryptoJS.enc.Hex);
     let mail_data_db = CryptoJS.HmacSHA256(mail_data_in, code_hash_db) // 邮箱
     let mail_code_db = mail_data_db.toString(CryptoJS.enc.Hex);
@@ -117,7 +117,7 @@ export async function userRegs(c: Context) {
             const {publicKey, privateKey} = generateKeyPairSync(
                 'ec', {namedCurve: 'prime256v1'});
             console.log(publicKey);
-            await saves.updateDB(c, "Users",
+            await saves.updateDB(c.env.DB, "Users",
                 {
                     code: "",
                     flag: "1",
@@ -144,7 +144,7 @@ export async function userRegs(c: Context) {
 export async function userPost(c: Context) {
     let pass_hmac_in: string = <string>c.req.query('token');
     let mail_data_in: string = <string>c.req.query('email');
-    let user_data_db = await getUsers(c, mail_data_in);
+    let user_data_db: Record<string, any>[]  = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0) return c.json({flags: 0}, 401);
     let user_data_in = user_data_db[0]
     const pass_hmac_db = await hmacSHA2(user_data_in['pass'], user_data_in['code']);
@@ -154,7 +154,7 @@ export async function userPost(c: Context) {
     local.deleteCookie(c, 'users')
     local.setCookie(c, 'mail', mail_data_in);
     await local.setSignedCookie(c, 'auth', pass_hmac_in, user_data_in['pass']);
-    await saves.updateDB(c, "Users",
+    await saves.updateDB(c.env.DB, "Users",
         {code: "",},
         {mail: mail_data_in,}
     );
@@ -166,7 +166,7 @@ export async function userAuth(c: Context) {
     const user_mail = local.getCookie(c, 'mail')
     // console.log(user_mail);
     if (!user_mail || user_mail.length <= 0) return false;
-    const user_data = (await getUsers(c, user_mail))[0];
+    const user_data: Record<string, any>  = (await getUsers(c, user_mail))[0];
     if (Object.keys(user_data).length <= 2) return false;
     // console.log(user_data);
     const user_auth = await local.getSignedCookie(

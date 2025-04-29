@@ -29,8 +29,8 @@ CREATE TABLE Apply
     keys TEXT, -- 证书私钥文件 -- PEM格式 BASE64存储证书体
     cert TEXT, -- 证书签署文件 -- PEM格式 BASE64存储证书体
     data TEXT, -- 证书数据
-    csrs TEXT  -- 证书请求
-    -- Flag： 0-待创建 1-待确认(用户提交) 2-处理(平台代理)
+    --     csrs TEXT  -- 证书请求
+    -- Flag： 0-待创建 1-处理(平台代理) 2-待确认(用户提交)
     --        3-验证中 4-申请中(验证通过) 5-已成功 -1-失败
     -- Subject内容: { C: '', S: '', ST: '', O: '', E: '' }
     -- domains内容: [{

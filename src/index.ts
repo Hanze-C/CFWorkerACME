@@ -8,7 +8,10 @@ import manifest from '__STATIC_CONTENT_MANIFEST'
 
 
 // 绑定数据 ###############################################################################
-export type Bindings = { DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String }
+export type Bindings = {
+    DB: D1Database, MAIL_KEYS: string, MAIL_SEND: string,
+    DCV_AGENT: string, DCV_EMAIL: string, DCV_TOKEN: string, DCV_ZONES: string
+}
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
 
@@ -45,6 +48,7 @@ app.use('/apply/', async (c) => {
             domain_save.push(domain_list[domain]);
         }
         // console.log(domain_save);
+
         await saves.insertDB(c.env.DB, "Apply", {
             uuid: await users.newNonce(16),
             mail: local.getCookie(c, 'mail'),

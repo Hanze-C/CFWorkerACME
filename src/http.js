@@ -67,48 +67,6 @@ class HttpClient {
         log(`RESP ${resp.status} ${method} ${url}`);
         return resp;
     }
-
-    // async request(url, method, opts = {}) {
-    //     // 设置请求的 URL 和方法
-    //     opts.url = url;
-    //     opts.method = method;
-    //
-    //     // 设置请求的默认行为，比如不自动处理 HTTP 错误状态码
-    //     opts.validateStatus = null;
-    //
-    //     /* 设置请求头 */
-    //     if (typeof opts.headers === 'undefined') {
-    //         opts.headers = {};
-    //     }
-    //
-    //     opts.headers['Content-Type'] = 'application/jose+json';
-    //
-    //     /* 发起请求 */
-    //     log(`HTTP request: ${method} ${url}`);
-    //     // 正确使用 fetch 的配置对象
-    //     const response = await fetch(url, {
-    //         method: method, // 正确地将方法放在配置对象的 method 属性中
-    //         headers: opts.headers,
-    //         body: opts.data // 如果请求方法是 POST、PUT 等，且有请求体，则包含它
-    //     });
-    //
-    //     // 处理响应数据
-    //     let respData;
-    //     try {
-    //         respData = await response.json(); // 假设返回的是 JSON 格式数据
-    //     } catch (e) {
-    //         // 如果不是 JSON 格式，可以尝试其他方式处理，比如 text()
-    //         respData = await response.text();
-    //     }
-    //
-    //     log(`RESP ${response.status} ${method} ${url}`);
-    //     // 返回一个类似 axios 响应对象的结构
-    //     return {
-    //         data: respData,
-    //         status: response.status,
-    //         statusText: response.statusText
-    //     };
-    // }
     /**
      * Get ACME provider directory
      *
