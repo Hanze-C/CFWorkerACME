@@ -32,6 +32,7 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
     // 获取申请域名信息 =============================================================================
     let client_data: any = await getStart(order_user, order_info); // 获取域名证书的申请操作接口
     let domain_list: any = await getNames(order_info, true) // 获取当前申请域名的详细信息和类型
+    console.log(order_info, domain_list);
     let orders_data: any = JSON.stringify(await client_data.createOrder({identifiers: domain_list}));
     // 写入订单详细数据 =============================================================================
     await saves.updateDB(env.DB, "Apply", {data: orders_data}, {uuid: order_info['uuid']})
@@ -204,7 +205,7 @@ async function getNames(order_info: any, full: boolean = false) {
         const domain_now = domain_data[uid];
         console.log("domain_now: ", domain_now);
         const author_now = domain_now['type'].split("-")[0]
-        if (domain_now['wildcard']) { // 先处理通配符的情况 ===================================
+        if (domain_now['wild']) { // 先处理通配符的情况 ===================================
             if (full) domain_save.push({type: author_now, value: "*." + domain_now['name']});
             else domain_save.push("*." + domain_now['name']);
         } // 如果不是通配符，或者通配符勾选了根域名的情况，也要添加域名本身 ===================
