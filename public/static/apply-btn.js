@@ -1,5 +1,5 @@
 // 申请证书
- function applyCert() {
+function applyCert() {
     // 提取域名信息
     const domainList = [];
     const domainRows = document.querySelectorAll('.domain-row');
@@ -57,8 +57,14 @@
         .then(response => response.json())
         .then(data => {
             console.log('Success:', data);
+            if (data.flags === 0) {
+                window.location.href = '/order.html?id=' + data['order'];
+            } else {
+                window.alert("证书申请提交失败: " + data)
+            }
         })
         .catch((error) => {
             console.error('Error:', error);
         });
+
 }

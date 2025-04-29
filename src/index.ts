@@ -32,7 +32,7 @@ app.get('/panel/', async (c) => {
 })
 
 
-// 核查状态 ###############################################################################
+// 申请证书 ###############################################################################
 app.use('/apply/', async (c) => {
     if (c.req.method !== 'POST') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
     if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
@@ -48,9 +48,9 @@ app.use('/apply/', async (c) => {
             domain_save.push(domain_list[domain]);
         }
         // console.log(domain_save);
-
+        let uuid = await users.newNonce(16)
         await saves.insertDB(c.env.DB, "Apply", {
-            uuid: await users.newNonce(16),
+            uuid: uuid,
             mail: local.getCookie(c, 'mail'),
             sign: upload_json['globals']['ca'],
             type: upload_json['globals']['encryption'],
@@ -62,12 +62,32 @@ app.use('/apply/', async (c) => {
             keys: "",
             cert: "",
         })
+        return c.json({"flags": 0, "texts": "证书申请成功", "order": uuid}, 200);
     } catch (error) {
         return c.json({"flags": 3, "texts": "请求数据无效: " + error}, 400);
     }
-    return c.json({"flags": 0, "texts": "证书申请成功", "order": "000000"}, 200);
 })
 
+// 获取订单 ###############################################################################
+app.use('/order/', async (c) => {
+    if (c.req.method !== 'GET') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
+    if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
+    let order_uuid: string = <string>c.req.query('id'); // 邮件明文索引用户
+    let user_email: string | undefined = local.getCookie(c, 'mail')
+    if (!order_uuid) return c.json({"flags": 5, "texts": "订单ID不存在"}, 401);
+    if (!user_email) return c.json({"flags": 4, "texts": "用户尚未登录"}, 401);
+    // 读取数据
+    try {
+        let order_data: Record<string, any> = await saves.selectDB(
+            c.env.DB, "Apply", {uuid: {value: order_uuid}, mail: {value: user_email}});
+        if (order_data.length < 1) return c.json({"flags": 6, "texts": "请求订单不存在"}, 400);
+        let order_save: any = order_data[0];
+        // delete order_save.keys;
+        return c.json({"flags": 0, "texts": "获取证书成功", "order": order_save}, 200);
+    } catch (error) {
+        return c.json({"flags": 3, "texts": "请求数据无效: " + error}, 400);
+    }
+})
 
 // 用户注册 ###############################################################################
 app.get('/setup/', async (c) => {

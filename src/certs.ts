@@ -1,22 +1,20 @@
 import * as acme from 'acme-client';
+import {Client} from "acme-client";
 import * as saves from './saves'
 import * as query from "./query";
 import {Bindings} from './index'
-import {Authorization, Client} from "acme-client";
-import {Challenge} from "acme-client/types/rfc8555";
 import {hmacSHA2} from "./users";
 
 
 const ssl: Record<string, any> = {
     "lets-encrypt": acme.directory.letsencrypt.staging,
     "google-trust": acme.directory.google.staging,
-    "bypass-trust": acme.directory.buypass.staging,
-    "zerossl-cert": acme.directory.zerossl.production
+    "bypass-trust": acme.directory.buypass.staging
 }
 
 // 整体处理进程 ====================================================================================
 export async function Processing(env: Bindings) {
-    let order_list: any = await saves.selectDB(env.DB, "Apply", {flag: {value: 4, op: "!="}});
+    let order_list: any = await saves.selectDB(env.DB, "Apply", {flag: {value: 5, op: "!="}});
     for (const id in order_list) { // 获取信息 =====================================================
         let order_info = order_list[id]; // 获取当前订单详细情况
         let order_mail = order_info['mail']; // 当前订单用户邮箱
@@ -32,7 +30,7 @@ export async function Processing(env: Bindings) {
 // 新增证书订单 =====================================================================================
 export async function newApply(env: Bindings, order_user: any, order_info: any) {
     // 获取申请域名信息 =============================================================================
-    let client_data: any = await getStart(env, order_user, order_info); // 获取域名证书的申请操作接口
+    let client_data: any = await getStart(order_user, order_info); // 获取域名证书的申请操作接口
     let domain_list: any = await getNames(order_info, true) // 获取当前申请域名的详细信息和类型
     let orders_data: any = JSON.stringify(await client_data.createOrder({identifiers: domain_list}));
     // 写入订单详细数据 =============================================================================
@@ -45,33 +43,21 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
 export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) {
     let domain_list: any = order_info['list'];
     let orders_text: any = JSON.parse(order_info['data'])
-    let client_data: any = await getStart(env, order_user, order_info);
+    let client_data: any = await getStart(order_user, order_info);
     let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
     // console.log(domain_list, orders_data);
-    let author_save: Record<string, any> = {};
-    let author_list: Authorization[] = await client_data.getAuthorizations(orders_data); // 获取授权
     // 执行验证部分 ================================================================================
-    for (const author_data of author_list) {
-        // console.log(author_data);
-        // 待验证信息 =====================================
-        const author_info: any = author_data['identifier'];
-        const author_name: string = author_info['value'];
-        const author_type: string = author_info['type'];
-        const challenge: Challenge | undefined = author_data.challenges.find(c => c.type === "dns-01");
-        if (challenge == undefined) continue
-        const keyAuthorization = await client_data.getChallengeKeyAuthorization(challenge);
-        console.log(author_name, author_type, challenge['token']);
-        author_save[author_name] = challenge['token']
-    }
+    let author_save: Record<string, Record<string, any>> = await getAuthy(client_data, orders_data)
     let domain_save: any[] = []
     for (let domain_item of JSON.parse(domain_list)) {
         let domain_name = domain_item.name;
+        // console.log(domain_name, author_save, author_save[domain_name]);
         if (author_save[domain_name] == undefined) continue;
-        domain_item['auth'] = author_save[domain_name];
+        domain_item['auth'] = author_save[domain_name]['text'];
         if (domain_item['type'] == "dns-auto") {
             let domain_auto = await hmacSHA2(domain_name, order_user['mail'])
             domain_item['auto'] = domain_auto.substring(0, 16) + "." + env.DCV_AGENT
-            console.log(domain_item['auto'])
+            // console.log(domain_item['auto'])
             try {
                 const response = await fetch(
                     `https://api.cloudflare.com/client/v4/zones/${env.DCV_ZONES}/dns_records`,
@@ -97,85 +83,116 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
                 console.error('Error:', error);
             }
         }
+        domain_item.flag = 2
         domain_save.push(domain_item);
     }
     await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
-    console.log(domain_save);
     await saves.updateDB(env.DB, "Apply", {flag: 2}, {uuid: order_info['uuid']})
+    console.log(domain_save);
 }
 
 // 执行域名验证 ====================================================================================
 export async function dnsCheck(env: Bindings, order_user: any, order_info: any) {
     let domain_list: any = order_info['list'];
     let orders_text: any = JSON.parse(order_info['data'])
-    let client_data: any = await getStart(env, order_user, order_info);
-    let orders_data = await client_data.getOrder(orders_text); // 获取授权信息
-    let domain_save: any[] = []
-    for (let domain_item of JSON.parse(domain_list)) {
-        let domain_name = domain_item.name;
-        let author_text = domain_item.auth;
-        let domain_type = "TXT"
-        if (domain_item.type == "dns-auto") {
-            domain_type = "CNAME"
-            author_text = domain_item.auto
+    let client_data: any = await getStart(order_user, order_info);
+    let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
+    let author_save: Record<string, Record<string, any>> = await getAuthy(client_data, orders_data)
+    // 验证所有域名 ================================================================================
+    let domain_save: any[] = [] // 需要最后保存的域名详细验证数据
+    let status_flag: number = 4;
+    for (let domain_item of JSON.parse(domain_list)) { // 验证DNS
+        // console.log(domain_item);
+        if (author_save[domain_item.name] == undefined) continue;
+        // 设置数据 =============================================
+        let domain_name = domain_item.name; // 待验证的域名
+        let author_text = domain_item.auth; // 目标解析记录
+        let domain_type = "TXT" // 待验证域名格式文本TXT
+        if (domain_item.type == "dns-auto") { // 如果DNS-AUTO模式
+            domain_type = "CNAME" // 此时需检查CNAME而不是TXT记录
+            author_text = domain_item.auto // 验证内容也改为CNAME
+        } // 查询DNS ============================================
+        let author_flag: boolean = false // 有一个DNS不对则全错误
+        let record_list: any = await query.queryDNS(
+            "_acme-challenge." + domain_name, domain_type)
+        // console.log('Records for', domain_name, ':');
+        for (let record_item of record_list) { // 查询所有DNS记录
+            if (record_item['data'] == author_text)
+                author_flag = true
+            else {
+                author_flag = false
+                break;
+            }
+            // console.log(record_item);
         }
-        await query.queryDNS("_acme-challenge." + domain_name, domain_type).then((records) => {
-            console.log('Records for', domain_name, ':');
-            records.forEach((record) => {
-                console.log(record);
-            });
-        });
+        console.log(author_flag);
+        if (!author_flag) { // 本地验证失败 ========================================================
+            domain_item.flag = 2;
+            status_flag = -1
+        } else { // 本地验证成功 =====================================================================
+            let author_data: Record<string, any> = author_save[domain_item.name]
+            console.log(author_data);
+            if (author_data.data['status'] == "invalid") { // 已有验证失败
+                domain_item.flag = -1;
+                status_flag = -1;
+                continue
+            }
+            if (author_data.data['status'] == 'pending') {
+                let upload_flag: boolean = await client_data.verifyChallenge(author_data.auth, author_data.data);
+                console.log('Domain Server Verify Status:', upload_flag);
+                let submit_flag = await client_data.completeChallenge(author_data.data);
+                console.log('Domain Remote Upload Status:', submit_flag);
+                let result_flag = await client_data.waitForValidStatus(author_data.data);
+                console.log('Domain Remote Verify Status:', result_flag);
+                if (result_flag.status == "valid") {
+                    domain_item.flag = 4;
+                }
+            }
+            if (author_data.data['status'] == 'valid') {
+                domain_item.flag = 4;
+            }
+        }
+        domain_save.push(domain_item);
     }
-
-    // try {
-    //     const result = await client_data.completeChallenge(challenge);
-    //     console.log('Challenge completed:', result);
-    // }
-    // catch (e) {
-    //     console.error('Challenge Failed:', e);
-    //     // const result = await client_data.deactivateAuthorization(challenge);
-    //     // console.log('Deactivate Authorization:', result);
-    // }
-    // try {
-    //     await client_data.waitForValidStatus(challenge);
-    //     console.log('Challenge status is valid');
-    // }
-    // catch (e) {
-    //     console.error(e);
-    // }
-
-    // const { challenges } = author_data;
-    // const key = await client_data.getChallengeKeyAuthorization(author_data);
-    // await client_data.verifyChallenge(author_data, author_data);
+    orders_data = await client_data.getOrder(orders_text);
+    console.log(orders_data);
+    await saves.updateDB(env.DB, "Apply", {data: JSON.stringify(orders_data)}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB, "Apply", {flag: status_flag}, {uuid: order_info['uuid']})
 }
-
-// // 完成验证
-// await client.completeChallenge(challenge);
-// // 等待验证状态变为有效
-// await client.waitForValidStatus(challenge);
-// // 验证验证是否通过
-// const isValid = (challenge.status === 'valid');
-// console.log(`Challenge is valid: ${isValid}`);
-// // 最终确认订单
-// await client.finalizeOrder(order, certificateRequest);
-// // 获取证书
-// const certificate = await client.getCertificate(order);
-// return { certificate, certificateKey };
 
 
 // 完成证书申请 #######################################################################################################
 export async function getCerts(env: Bindings, order_user: any, order_info: any) {
-    let domainsListCSR: any = await getNames(order_info, false);
-    let privateKeyText = null // 私钥创建过程 ===================================================================
-    if (order_info['type'] == "rsa2048") privateKeyText = await acme.crypto.createPrivateRsaKey(2048);
-    if (order_info['type'] == "eccp256") privateKeyText = await acme.crypto.createPrivateEcdsaKey('P-256');
-    if (order_info['type'] == "eccp384") privateKeyText = await acme.crypto.createPrivateEcdsaKey('P-384');
-    let [privateKeyBuff, certificateCSR] = await acme.crypto.createCsr({ // 创建证书请求 ==============================
-        altNames: domainsListCSR, commonName: domainsListCSR[0], country: order_info['C'], state: order_info['S'],
-        locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU'],
-    }, privateKeyText);
-    await saves.updateDB(env.DB, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {csrs: certificateCSR.toString()}, {uuid: order_info['uuid']})
+    let orders_text: any = JSON.parse(order_info['data'])
+    let client_data: any = await getStart(order_user, order_info);
+    let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
+    console.log(orders_data);
+    console.log('Orders Remote Verify Status:', orders_data.status);
+    if (orders_data.status === 'ready') {
+        let domainsListCSR: any = await getNames(order_info, false);
+        let privateKeyText = null // 私钥创建过程 ===================================================================
+        if (order_info['type'] == "rsa2048") privateKeyText = await acme.crypto.createPrivateRsaKey(2048);
+        if (order_info['type'] == "eccp256") privateKeyText = await acme.crypto.createPrivateEcdsaKey('P-256');
+        if (order_info['type'] == "eccp384") privateKeyText = await acme.crypto.createPrivateEcdsaKey('P-384');
+        let [privateKeyBuff, certificateCSR] = await acme.crypto.createCsr({ // 创建证书请求 ==============================
+            altNames: domainsListCSR, commonName: domainsListCSR[0], country: order_info['C'], state: order_info['S'],
+            locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU'],
+        }, privateKeyText);
+        await saves.updateDB(env.DB, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
+        const finish_text: any = await client_data.finalizeOrder(orders_data, certificateCSR);// 最终确认订单
+        console.log('Orders Remote Finish Status:', finish_text);
+    }
+    if (orders_data.status === 'processing') {
+        console.log('Orders Remote Finish Status:', "Certificate Processing");
+    }
+    if (orders_data.status === 'valid') {
+        const certificate: any = await client_data.getCertificate(orders_data);// 获取证书
+        // console.log('Orders Remote Issues Status:', certificate);
+        await saves.updateDB(env.DB, "Apply", {cert: certificate}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB, "Apply", {flag: 5}, {uuid: order_info['uuid']})
+        // await saves.updateDB(env.DB, "Apply", {data: ""}, {uuid: order_info['uuid']})
+    }
 }
 
 // 获取域名信息 ####################################################################################
@@ -200,7 +217,7 @@ async function getNames(order_info: any, full: boolean = false) {
 }
 
 // 获取操作接口 ####################################################################################
-async function getStart(env: Bindings, order_user: any, order_info: any) {
+async function getStart(order_user: any, order_info: any) {
     let client_data: Client = new acme.Client({
         directoryUrl: ssl[order_info['sign']],
         accountKey: order_user['keys'],
@@ -216,15 +233,35 @@ async function getStart(env: Bindings, order_user: any, order_info: any) {
     return client_data;
 }
 
-
-let temp = [
-    {
-        "name": "example.com",
-        "wild": true,
-        "root": true,
-        "type": "dns-self",
-        "flag": 0,
-        "text": "",
-        "auth": "",
+// 获取验证数据 ####################################################################################
+async function getAuthy(client_data: any, orders_data: any) {
+    let author_list: any[] = await client_data.getAuthorizations(orders_data);
+    let author_maps: Record<string, any> = {}
+    for (const author_data of author_list) {
+        // 待验证信息 ======================================
+        let author_info: any = author_data['identifier'];
+        let author_name: string = author_info['value'];
+        // let author_type: string = author_info['type'];
+        // 查找DNS验证信息 =================================
+        let author_save = undefined
+        // console.log(author_data)
+        for (const c of author_data['challenges']) {
+            if (c.type === "dns-01") {
+                author_save = c
+                break
+            }
+        }
+        if (author_save == undefined) continue
+        let author_text = await client_data.getChallengeKeyAuthorization(author_save)
+        console.log(author_text);
+        // 返回结果 ========================================
+        // console.log(author_name, author_type, author_save['token']);
+        author_maps[author_name] = {
+            text: author_text,
+            data: author_save,
+            auth: author_data,
+        }
     }
-]
+    // console.log(author_maps);
+    return author_maps;
+}

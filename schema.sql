@@ -23,13 +23,13 @@ CREATE TABLE Apply
     type INTEGER (1), -- 证书类型，0-RSA/1-ECC256/2-ECC384
     auto INTEGER (1) NOT NULL DEFAULT (0), -- 是否自动续期
     flag INTEGER (1) NOT NULL DEFAULT (0), -- 证书申请状态
-    time INTEGER NOT NULL DEFAULT (0), -- 证书开始申请时间
+    time INTEGER DEFAULT (0), -- 证书开始时间/订单申请时间
+    next INTEGER DEFAULT (0), -- 证书过期时间/订单过期时间
     main TEXT    NOT NULL, -- 申请证书的主体JSON数据存储位
     list TEXT    NOT NULL, -- 申请证书的域名列表和配置信息
     keys TEXT, -- 证书私钥文件 -- PEM格式 BASE64存储证书体
     cert TEXT, -- 证书签署文件 -- PEM格式 BASE64存储证书体
-    data TEXT, -- 证书数据
-    --     csrs TEXT  -- 证书请求
+    data TEXT, -- 证书临时数据 -- JSON-AL 存储证书申请对象
     -- Flag： 0-待创建 1-处理(平台代理) 2-待确认(用户提交)
     --        3-验证中 4-申请中(验证通过) 5-已成功 -1-失败
     -- Subject内容: { C: '', S: '', ST: '', O: '', E: '' }
