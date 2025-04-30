@@ -68,7 +68,7 @@ export async function addUsers(c: Context, email: string) {
         code: nonce,
         time: Date.now(),
     });
-    return await codeSend(c.env.DB, email, nonce)
+    return await codeSend(c, email, nonce)
 }
 
 

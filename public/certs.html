@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSL证书助手 - 证书列表</title>
+    <link href="static/style-all.css" rel="stylesheet"/>
+    <link href="static/bootstrap.css" rel="stylesheet">
+    <script src="static/crypt-min.js"></script>
+    <script src="static/panel-min.js"></script>
+    <script src="static/order-map.js"></script>
+    <script src="static/certs-min.js"></script>
+</head>
+<body style="max-width: 3600px;">
+<div class="container" style="max-width: 3600px;">
+    <div id="sides-bar"></div>
+    <div class="content" style="max-width:3200px;">
+        <div class="main-content">
+            <div class="form-section">
+                <h2>证书列表</h2>
+                <table class="orders-table">
+                    <thead>
+                    <tr>
+                        <th>订单编号</th>
+                        <th>订单状态</th>
+                        <th>证书域名</th>
+                        <th>证书厂商</th>
+                        <th>加密算法</th>
+                        <th>申请时间</th>
+                        <th>过期时间</th>
+                        <th>通知消息</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="msg_list">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<script>
+    srtGravatar("certs");
+    numApply();
+</script>
+</body>
+</html>

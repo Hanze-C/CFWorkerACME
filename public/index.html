@@ -5,19 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSL证书助手</title>
     <link href="static/style-all.css" rel="stylesheet"/>
+    <link href="static/bootstrap.css" rel="stylesheet">
 </head>
 <body>
 <div class="container">
-    <div class="form-container">
+    <div class="form-container" style="max-width: 1600px;">
         <h1>SSL证书助手</h1>
-        <div class="form-group" id="suffix_view">
-            SSL证书助手是一个免费、开源的全自动化SSL证书申请和下发平台，依托于Cloudflare运行<br/><br/>
+        <div class="form-group" id="suffix_view" style="margin-bottom: 50px">
+            SSL证书助手是一个免费、开源的全自动化SSL证书申请和下发平台，依托于Cloudflare运行<br/>
             本平台通过自动化CNAME和DNS操作，全自动验证域名DNS申请SSL证书，并自动下发到服务器
-        </div><br/><br/>
+        </div>
         <div id="login_btn" class="buttons">
-            <button type="button" class="LimeGreen-btn" onclick="location.href='/login.html'">登录</button>
-            <button type="button" class="RoyalBlue-btn" onclick="location.href='/login.html?register=1'">注册</button>
-            <button type="button" class="DimGray01-btn" onclick="location.href='https://github.com/PIKACHUIM/CFWorkerACME'">Github</button>
+            <button type="button" class="btn btn-primary" onclick="location.href='/panel.html?register=1'">控制台</button>
+            <button type="button" class="btn btn-success" onclick="location.href='/login.html'">登录</button>
+            <button type="button" class="btn btn-primary" onclick="location.href='/login.html?register=1'">注册</button>
+            <button type="button" class="btn btn-secondary" onclick="location.href='https://github.com/PIKACHUIM/CFWorkerACME'">Github</button>
         </div>
     </div>
 </div>

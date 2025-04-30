@@ -30,6 +30,7 @@ CREATE TABLE Apply
     keys TEXT, -- 证书私钥文件 -- PEM格式 BASE64存储证书体
     cert TEXT, -- 证书签署文件 -- PEM格式 BASE64存储证书体
     data TEXT, -- 证书临时数据 -- JSON-AL 存储证书申请对象
+    text TEXT, -- 证书申请消息 -- 文本格式存储证书消息事件
     -- Flag： 0-待创建 1-处理(平台代理) 2-待确认(用户提交)
     --        3-验证中 4-申请中(验证通过) 5-已成功 -1-失败
     -- Subject内容: { C: '', S: '', ST: '', O: '', E: '' }
@@ -54,19 +55,12 @@ CREATE TABLE Apply
 
 
 
-CREATE TABLE Authy
-(
-    user INTEGER NOT NULL,
-    type INTEGER NOT NULL,
-    hash TEXT    NOT NULL,
-    time TEXT    NOT NULL,
-    name TEXT    NOT NULL,
-    data TEXT    NOT NULL
-);
-
-
--- CreateIndex
-CREATE UNIQUE INDEX "Users_mail_key" ON "Users" ("mail");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Authy_hash_key" ON "Authy" ("hash");
+-- CREATE TABLE Authy
+-- (
+--     user INTEGER NOT NULL,
+--     type INTEGER NOT NULL,
+--     hash TEXT    NOT NULL,
+--     time TEXT    NOT NULL,
+--     name TEXT    NOT NULL,
+--     data TEXT    NOT NULL
+-- );

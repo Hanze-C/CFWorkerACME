@@ -3,156 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSL证书助手 - 用户登录</title>
+    <title>SSL证书助手 - 管理中心</title>
     <link href="static/style-all.css" rel="stylesheet"/>
+    <link href="static/bootstrap.css" rel="stylesheet">
     <script src="static/crypt-min.js"></script>
+    <script src="static/panel-min.js"></script>
+    <script src="static/certs-min.js"></script>
 </head>
 <body>
 <div class="container">
-    <div class="sidebar">
-        <div class="avatar">
-            <img src="https://via.placeholder.com/40" alt="">
-            <div class="email" id="user-email">user@example.com</div>
-        </div>
-        <div class="header">
-            <div class="user-profile">
-                <div class="dropdown-menu" id="dropdown-menu">
-                    <div class="dropdown-item active">管理中心</div>
-                    <div class="dropdown-item">账号设置</div>
-                    <div class="dropdown-item">证书列表</div>
-                    <div class="dropdown-item">申请证书</div>
-                    <div class="dropdown-item logout">退出登录</div>
-                </div>
-            </div>
-        </div>
-        <div class="sidebar-item active">管理中心</div>
-        <div class="sidebar-item">证书列表</div>
-        <div class="sidebar-item">域名账号</div>
-        <div class="sidebar-item">账号设置</div>
-    </div>
-
+    <div id="sides-bar"></div>
     <div class="content">
-
-
         <div class="main-content">
-            <div class="charts-section">
+            <div class="form-section">
+                <h2>证书统计</h2>
                 <div class="chart-container">
                     <div class="chart">
-                        <h3>申请中</h3>
-                        <div class="pie-chart">40%</div>
+                        <h3>待验证</h3>
+                        <div class="pie-chart" id="cert_wait"></div>
                     </div>
                     <div class="chart">
-                        <h3>已申请</h3>
-                        <div class="pie-chart">30%</div>
+                        <h3>验证中</h3>
+                        <div class="pie-chart" id="cert_auth"></div>
                     </div>
                     <div class="chart">
-                        <h3>待续期</h3>
-                        <div class="pie-chart">20%</div>
+                        <h3>已签发</h3>
+                        <div class="pie-chart" id="cert_done"></div>
                     </div>
+
                     <div class="chart">
-                        <h3>已过期</h3>
-                        <div class="pie-chart">10%</div>
+                        <h3>已失效</h3>
+                        <div class="pie-chart" id="cert_fail"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="orders-section">
-                <h2>近期订单</h2>
+            <div class="form-section">
+                <h2>消息通知</h2>
                 <table class="orders-table">
                     <thead>
                     <tr>
                         <th>订单ID</th>
-                        <th>域名</th>
-                        <th>状态</th>
-                        <th>证书厂商</th>
+                        <th>时间</th>
+                        <th>消息</th>
                         <th>操作</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    <tr>
-                        <td>#12345</td>
-                        <td>example.com</td>
-                        <td class="status-active">已激活</td>
-                        <td>Let's Encrypt</td>
-                        <td><button class="details-btn">查看详情</button></td>
-                    </tr>
-                    <tr>
-                        <td>#12346</td>
-                        <td>test.com</td>
-                        <td class="status-pending">申请中</td>
-                        <td>DigiCert</td>
-                        <td><button class="details-btn">查看详情</button></td>
-                    </tr>
-                    <tr>
-                        <td>#12347</td>
-                        <td>demo.com</td>
-                        <td class="status-expired">已过期</td>
-                        <td>Symantec</td>
-                        <td><button class="details-btn">查看详情</button></td>
-                    </tr>
+                    <tbody id="msg_list">
                     </tbody>
                 </table>
-            </div>
-
-            <div class="bottom-buttons">
-                <button class="RoyalBlue-btn">证书列表</button>
-                <button class="RoyalBlue-btn">域名账号</button>
-                <button class="RoyalBlue-btn">账号设置</button>
-                <button class="RoyalBlue-btn">平台主页</button>
-                <button class="DimGray01-btn logout-btn">退出登录</button>
             </div>
         </div>
     </div>
 </div>
-
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 点击邮箱显示下拉菜单
-        const emailElement = document.getElementById('user-email');
-        const dropdownMenu = document.getElementById('dropdown-menu');
-
-        emailElement.addEventListener('click', function() {
-            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
-        });
-
-        // 点击其他地方关闭下拉菜单
-        document.addEventListener('click', function(event) {
-            if (!emailElement.contains(event.target) && !dropdownMenu.contains(event.target)) {
-                dropdownMenu.style.display = 'none';
-            }
-        });
-
-        // 侧边栏点击切换激活状态
-        const sidebarItems = document.querySelectorAll('.sidebar-item');
-        sidebarItems.forEach(item => {
-            item.addEventListener('click', function() {
-                sidebarItems.forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-
-        // 下拉菜单点击切换激活状态
-        const dropdownItems = document.querySelectorAll('.dropdown-item');
-        dropdownItems.forEach(item => {
-            item.addEventListener('click', function() {
-                dropdownItems.forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-                dropdownMenu.style.display = 'none';
-            });
-        });
-
-        // 退出登录按钮
-        const logoutBtn = document.querySelector('.logout-btn');
-        const logoutItem = document.querySelector('.logout');
-
-        logoutBtn.addEventListener('click', function() {
-            window.location.href = '/logout';
-        });
-
-        logoutItem.addEventListener('click', function() {
-            window.location.href = '/logout';
-        });
-    });
+    srtGravatar("panel");
+    numOrders();
 </script>
 </body>
 </html>

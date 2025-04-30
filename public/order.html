@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSL证书助手 - 订单详情</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/bootstrap.css" rel="stylesheet">
     <link href="static/style-all.css" rel="stylesheet"/>
+    <script src="static/crypt-min.js"></script>
+    <script src="static/panel-min.js"></script>
+    <script src="static/order-map.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
     <style>
         /* 自定义补充样式 */
         .domain-row {
@@ -56,6 +60,7 @@
 </head>
 <body>
 <div class="container">
+    <div id="sides-bar"></div>
     <div class="form-container" style="max-width:1260px;width: 91.5%;">
         <h1>域名验证状态</h1>
         <!-- 证书申请成功信息部分 -->
@@ -70,6 +75,7 @@
                     <p id="cert_type"></p>
                     <p id="cert_main"></p>
                     <p id="cert_flag"></p>
+                    <p id="cert_text"></p>
                 </div>
             </div>
         </div>
@@ -84,135 +90,56 @@
 
         <!-- 底部操作按钮 -->
         <div class="d-flex gap-2 justify-content-end mt-4" id="cert_wait">
-            <button type="button" class="btn btn-primary" id="verify-all">验证全部</button>
-            <button type="button" class="btn btn-secondary" id="re-gen">重新验证</button>
-            <button type="button" class="btn btn-warning" id="reapply">修改申请</button>
-            <button type="button" class="btn btn-danger" id="cancel-application">撤销申请</button>
+            <button type="button" onclick="setAuthy('verify')" class="btn btn-primary" id="verify-all">验证全部</button>
+            <button type="button" onclick="setAuthy('reload')" class="btn btn-secondary" id="re-gen"
+                    disabled="disabled">重新生成
+            </button>
+            <button type="button" onclick="setAuthy('modify')" class="btn btn-warning" id="reapply" disabled="disabled">
+                修改申请
+            </button>
+            <button type="button" onclick="setAuthy('cancel')" class="btn btn-danger" id="cancel-application">撤销申请
+            </button>
         </div>
         <div class="d-flex gap-2 justify-content-end mt-4" id="cert_done">
-            <button type="button" class="btn btn-success" id="download-certificate">下载证书</button>
-            <button type="button" class="btn btn-info" id="re-new">续期证书</button>
-            <button type="button" class="btn btn-warning" id="delete-key">删除密钥</button>
-            <button type="button" class="btn btn-danger" id="revoke-certificate">吊销证书</button>
+            <button type="button" onclick="setAuthy('ca_get')"
+                    class="btn btn-success" id="download-certificate">下载证书
+            </button>
+            <button type="button" onclick="setAuthy('ca_key')"
+                    class="btn btn-success" id="download-key">下载密钥
+            </button>
+            <button type="button" onclick="setAuthy('re_new')" disabled="disabled"
+                    class="btn btn-info" id="re-new">续期证书
+            </button>
+            <button type="button" onclick="setAuthy('rm_key')"
+                    class="btn btn-warning" id="delete-key">删除密钥
+            </button>
+            <button type="button" onclick="setAuthy('cancel')"
+                    class="btn btn-danger" id="delete-cer">删除订单
+            </button>
+            <button type="button" onclick="setAuthy('ca_del')" disabled="disabled"
+                    class="btn btn-danger" id="revoke-certificate">吊销证书
+            </button>
         </div>
     </div>
 </div>
 <script>
-    // 证书信息 ==========================================================
-    const sign_map = {
-        "lets-encrypt": "Let's Encrypt Global",
-        "google-trust": "Google Trust Service",
-        "bypass-trust": "Bypass Trust Service",
-    }
-    const type_map = {
-        "rsa2048": "RSA 2048",
-        "eccp256": "ECC P256",
-        "eccp384": "ECC P384",
-    }
-    const flag_map = {
-        "0": "等待中",
-        "1": "创建中",
-        "2": "待验证",
-        "3": "验证中",
-        "4": "申请中",
-        "5": "已完成",
-        "-1": "已失效",
-    }
-    const auth_map = {
-        "dns-self": "TXT 手动验证",
-        "web-self": "WEB 手动验证",
-        "dns-auto": "TXT 自动验证",
-    }
-    // 切换验证详情显示/隐藏
-    function toggleDetails(button) {
-        const details = button.nextElementSibling;
+    // 证书信息 ########################################################################################################
+    // 使用URLSearchParams解析查询字符串 ==============
+
+
+    // 切换验证详情显示/隐藏 ###########################################################################################
+    function onToggle(now_button) {
+        const details = now_button.nextElementSibling;
         if (details.style.display === 'block') {
             details.style.display = 'none';
-            button.textContent = '显示详细信息';
+            now_button.textContent = '显示详细信息';
         } else {
             details.style.display = 'block';
-            button.textContent = '隐藏详细信息';
+            now_button.textContent = '隐藏详细信息';
         }
     }
 
-    // // 模拟验证按钮点击事件
-    // document.querySelectorAll('.btn-verify').forEach(button => {
-    //     button.addEventListener('click', function () {
-    //         alert('正在验证域名，请稍候...');
-    //         // 这里可以添加实际的验证逻辑，比如发送POST请求
-    //     });
-    // });
-    //
-    // // 模拟底部按钮点击事件
-    // document.getElementById('verify-all').addEventListener('click', function () {
-    //     alert('开始验证所有域名...');
-    // });
-    //
-    // document.getElementById('cancel-application').addEventListener('click', function () {
-    //     if (confirm('确定要撤销证书申请吗？')) {
-    //         alert('正在撤销申请...');
-    //     }
-    // });
-    //
-    // document.getElementById('reapply').addEventListener('click', function () {
-    //     if (confirm('确定要重新申请证书吗？')) {
-    //         alert('正在重新申请...');
-    //     }
-    // });
-
-    // 假如证书申请成功，可以调用以下函数显示成功信息
-    function showCertificateSuccess() {
-
-    }
-
-    // 页面加载 ##################################################################################
-    function onLoader() {
-        // 使用URLSearchParams解析查询字符串 ==============
-        const strSearch = window.location.search;
-        const urlParams = new URLSearchParams(strSearch);
-        // 判断是否包含tokens参数 =========================
-        if (!urlParams.has('id')) {
-            window.location.href = "/panel/";
-        } else {
-            const order = getOrder(urlParams.get('id'));
-            console.log(order);
-            if (Object.keys(order).length === 0) {
-                return; // 如果没有获取到有效订单数据，直接返回
-            }
-            setOrder(order);
-            if (order.flag >= 4 || order.flag <= 1) {
-                document.getElementById('verify-all').disabled = true;
-                if (order.flag !== -1)
-                    document.getElementById('re-gen').disabled = true;
-                document.getElementById('reapply').disabled = true;
-                document.getElementById('cancel-application').disabled = true;
-            }
-            if (order.cert.length === 0) {
-                document.getElementById('download-certificate').disabled = true;
-                document.getElementById('delete-key').disabled = true;
-            }
-            if (order.keys.length === 0) {
-                document.getElementById('delete-key').disabled = true;
-            }
-            if (order.flag >= 5){
-                document.getElementById('cert_wait').remove();
-                document.getElementById('domain-verification').remove();
-            }
-            else document.getElementById('cert_done').remove();
-
-            // 为新添加的验证按钮绑定点击事件
-            document.querySelectorAll('.btn-verify').forEach(button => {
-                button.addEventListener('click', function () {
-                    const domainName = this.getAttribute('data-domain');
-                    alert(`正在验证域名: ${domainName}，请稍候...`);
-                    // 这里可以添加实际的验证逻辑，比如发送POST请求
-                });
-            });
-
-        }
-    }
-
-    // 设置信息 ===============================================================================
+    // 设置信息 ########################################################################################################
     function setOrder(order_data) {
         // 遍历订单中的域名列表并动态生成HTML
         const domainsContainer = document.getElementById('domains-container');
@@ -235,28 +162,33 @@
 
                         <div class="d-flex align-items-center">
                             <label class="nowrap me-2">状态：</label>
-                            <span style="color:${domain.flag === 2 ? 'orange' : 'green'};">${domain.flag === 2 ? '待修改' : '已验证'}</span>
+                            <span style="color:${hint_map[domain.flag]};">${flag_map[domain.flag]}</span>
                         </div>
 
                         <div class="d-flex align-items-center">
-                            <button type="button" disabled="disabled" class="btn btn-primary btn-sm ms-auto btn-verify" data-domain="${domain.name}">立即验证</button>
+                            <button type="button" ${domain.flag === 2 ? '' : 'disabled="disabled"'} onclick="setAuthy('single',this)"
+                            class="btn ${domain.flag === 2 ? 'btn-primary' : 'btn-secondary'}  btn-sm ms-auto btn-verify"
+                            data-domain="${domain.name}">${domain.flag === 2 ? '验证本条' : '耐心等待'}</button>
                         </div>
                     </div>
 
-                    <div class="toggle-section card" >
+                    <div class="toggle-section card" ${domain.flag === 2 ? '' : 'hidden'}>
                         <button type="button" class="btn btn-info btn-sm" style="margin-bottom: 20px;"
-                            onclick="toggleDetails(this)">显示详细信息</button>
+                            onclick="onToggle(this)" >显示详细信息</button>
                         <div class="verification-details card-body">
                             <p><strong>失败原因：</strong>DNS记录未正确添加或SND存在生效延迟</p>
                             <p><strong>验证要求：</strong>请添加以下TXT记录到您的DNS解析设置：</p>
                             <p><div style="display: flex; align-items: center;">
-                                <strong>记录名称：</strong><div class="verification-info">__acme_challenge.${domain.name}</div>
+                                <strong>记录名称：</strong><div class="verification-info" onclick="autoCopy(this)">
+                                __acme_challenge.${domain.name}</div>
                             </div></p>
                             <p><div style="display: flex; align-items: center;">
-                                <strong>记录类型：</strong><div class="verification-info">TXT</div>
+                                <strong>记录类型：</strong><div class="verification-info" onclick="autoCopy(this)"
+                                >TXT</div>
                             </div></p>
                             <p><div style="display: flex; align-items: center;">
-                                <strong>记录内容：</strong><div class="verification-info">${domain.auth}</div>
+                                <strong>记录内容：</strong><div class="verification-info" onclick="autoCopy(this)"
+                                >${domain.auth}</div>
                             </div></p>
                         </div>
                     </div>
@@ -267,16 +199,17 @@
         let s_main = `C=${t_main.C}&S=${t_main.S}&ST=${t_main.ST}&O=${t_main.O}&OU=${t_main.OU}`
         let c_name = order_data['list'].map(c => c.name).toString();
         document.getElementById('cert_list').innerHTML = "<strong>证书域名：</strong>" + c_name;
-        document.getElementById('cert_time').innerHTML = "<strong>生效时间：</strong>" + new Date(order_data['time']);
-        document.getElementById('cert_next').innerHTML = "<strong>过期时间：</strong>" + new Date(order_data['next']);
+        document.getElementById('cert_time').innerHTML = "<strong>生效时间：</strong>" + new Date(order_data['time']).toLocaleString();
+        document.getElementById('cert_next').innerHTML = "<strong>过期时间：</strong>" + new Date(order_data['next']).toLocaleString();
         document.getElementById('cert_sign').innerHTML = "<strong>证书厂商：</strong>" + sign_map[order_data['sign']];
         document.getElementById('cert_type').innerHTML = "<strong>加密算法：</strong>" + type_map[order_data['type']];
         document.getElementById('cert_flag').innerHTML = "<strong>证书状态：</strong>" + flag_map[order_data['flag']];
+        document.getElementById('cert_text').innerHTML = "<strong>通知消息：</strong>" + order_data['text'];
         if (s_main.length > 16)
             document.getElementById('cert_main').innerHTML = "<strong>主体内容：</strong>" + s_main;
     }
 
-    // 获取证书订单 ===========================================================================
+    // 获取证书订单 ####################################################################################################
     function getOrder(order_uuid) {
         const xhr = new XMLHttpRequest();
         xhr.open('GET', '/order/?id=' + order_uuid, false); // 第三个参数设置为 false 表示同步请求
@@ -299,7 +232,8 @@
                     "keys": response.order.keys || "",
                     "data": JSON.parse(response.order.data),
                     "main": JSON.parse(response.order.main),
-                    "list": JSON.parse(response.order.list)
+                    "list": JSON.parse(response.order.list),
+                    "text": response.order.text
                 };
             } else {
                 console.log('证书订单获取失败:', response.texts);
@@ -313,7 +247,80 @@
         }
     }
 
+    // 自动复制内容 ####################################################################################################
+    function autoCopy(on_element) {
+        navigator.clipboard.writeText(on_element.innerText).then(() => {
+            // 显示复制成功的提示
+            Swal.fire({
+                position: 'top',
+                icon: 'success',
+                title: '内容已复制',
+                showConfirmButton: false,
+                timer: 700
+            });
+        }).catch(err => {
+            // 复制失败时的处理
+            console.error('无法复制文本：', err);
+            Swal.fire({
+                position: 'top',
+                icon: 'error',
+                title: '复制失败',
+                text: '请手动复制',
+                showConfirmButton: true,
+            });
+        })
+    }
+
+
+
+    function saveFile(data, fileName = 'download') {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data]));
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    // 页面加载 ########################################################################################################
+    function onLoader() {
+        // 判断是否包含tokens参数 =========================
+        if (!urlParams.has('id')) {
+            window.location.href = "/panel/";
+        } else {
+            const order = getOrder(urlParams.get('id'));
+            console.log(order);
+            if (Object.keys(order).length === 0) {
+                return; // 如果没有获取到有效订单数据，直接返回
+            }
+            setOrder(order);
+            if (order.flag >= 3 || order.flag <= 1) {
+                document.getElementById('verify-all').disabled = true;
+                document.getElementById('verify-all').innerText = "耐心等待";
+                document.getElementById('verify-all').className = "btn btn-secondary";
+                if (order.flag !== -1)
+                    document.getElementById('re-gen').disabled = true;
+                document.getElementById('reapply').disabled = true;
+                document.getElementById('cancel-application').disabled = true;
+            }
+            if (order.cert.length === 0) {
+                document.getElementById('download-certificate').disabled = true;
+                document.getElementById('delete-key').disabled = true;
+            }
+            if (order.keys.length === 0) {
+                document.getElementById('delete-key').disabled = true;
+                document.getElementById('download-key').disabled = true;
+            }
+            if (order.flag >= 5) {
+                document.getElementById('cert_wait').remove();
+                document.getElementById('domain-verification').remove();
+            } else document.getElementById('cert_done').remove();
+        }
+    }
+    srtGravatar()
     onLoader();
+    // setActive("certs");
 </script>
 </body>
 </html>

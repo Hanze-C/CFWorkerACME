@@ -5,12 +5,13 @@ import * as local from "hono/cookie";
 import {Hono} from 'hono'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
+import {opDomain} from "./certs";
 
 
 // 绑定数据 ###############################################################################
 export type Bindings = {
-    DB: D1Database, MAIL_KEYS: string, MAIL_SEND: string,
-    DCV_AGENT: string, DCV_EMAIL: string, DCV_TOKEN: string, DCV_ZONES: string
+    DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String,
+    DCV_AGENT: String, DCV_EMAIL: String, DCV_TOKEN: String, DCV_ZONES: String
 }
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
@@ -61,6 +62,8 @@ app.use('/apply/', async (c) => {
             list: JSON.stringify(domain_save),
             keys: "",
             cert: "",
+            next: new Date(new Date().setDate(new Date().getDate() + 7)).getTime(),
+            text: "订单提交成功",
         })
         return c.json({"flags": 0, "texts": "证书申请成功", "order": uuid}, 200);
     } catch (error) {
@@ -72,22 +75,71 @@ app.use('/apply/', async (c) => {
 app.use('/order/', async (c) => {
     if (c.req.method !== 'GET') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
     if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
-    let order_uuid: string = <string>c.req.query('id'); // 邮件明文索引用户
+    let order_uuid: string = <string>c.req.query('id'); // 用户邮件
+    let order_acts: string = <string>c.req.query('op'); // 执行操作
+    let order_push: string = <string>c.req.query('cd'); // 执行操作
     let user_email: string | undefined = local.getCookie(c, 'mail')
     if (!order_uuid) return c.json({"flags": 5, "texts": "订单ID不存在"}, 401);
     if (!user_email) return c.json({"flags": 4, "texts": "用户尚未登录"}, 401);
-    // 读取数据
+    // 读取数据 ============================================================================
     try {
-        let order_data: Record<string, any> = await saves.selectDB(
-            c.env.DB, "Apply", {uuid: {value: order_uuid}, mail: {value: user_email}});
-        if (order_data.length < 1) return c.json({"flags": 6, "texts": "请求订单不存在"}, 400);
-        let order_save: any = order_data[0];
-        // delete order_save.keys;
-        return c.json({"flags": 0, "texts": "获取证书成功", "order": order_save}, 200);
+        let order_data: Record<string, any>[] = []
+        if (order_uuid == "all") {
+            order_data = await saves.selectDB(c.env.DB, "Apply", {
+                mail: {value: user_email}
+            });
+            console.log(user_email, order_data)
+        } else {
+            order_data = await saves.selectDB(c.env.DB, "Apply", {
+                uuid: {value: order_uuid},
+                mail: {value: user_email}
+            });
+        }
+        // if (order_data.length < 1)
+        //     return c.json({"flags": 6, "texts": "请求订单无效"}, 400);
+        if (order_acts == undefined || order_acts === "") { // 获取订单信息 -----------
+            let order_save: any = order_uuid == "all" ? order_data : order_data[0];
+            return c.json({"flags": 0, "order": order_save}, 200);
+        } else { // 对订单执行操作 ----------------------------------------------------------
+            if (order_acts === "verify" && order_data[0].flag == 2) {// 提交验证请求
+                await saves.updateDB(c.env.DB, "Apply", {flag: 3}, {uuid: order_uuid})
+                let order_info = order_data[0]; // 获取当前订单详细情况
+                let order_mail = order_info['mail']; // 当前订单用户邮箱
+                let order_user: any = (await saves.selectDB( // 查询申请者信息
+                    c.env.DB, "Users", {mail: {value: order_mail}}))[0];
+                await opDomain(c.env, order_user, order_info, ["all"]);
+            } else if (order_acts === "reload")
+                await saves.updateDB(c.env.DB, "Apply", {flag: 0}, {uuid: order_uuid})
+            else if (order_acts === "modify" || order_acts === "cancel")
+                await saves.deleteDB(c.env.DB, "Apply", {uuid: order_uuid})
+            else if (order_acts === "single") {
+                order_acts += "-" + order_push
+                if (order_push == undefined || order_push == "undefined")
+                    return c.json({"flags": 5, "texts": "请求操作无效", "order": order_acts});
+                let order_info = order_data[0]; // 获取当前订单详细情况
+                let order_mail = order_info['mail']; // 当前订单用户邮箱
+                let order_user: any = (await saves.selectDB( // 查询申请者信息
+                    c.env.DB, "Users", {mail: {value: order_mail}}))[0];
+                await opDomain(c.env, order_user, order_info, [order_push]);
+            } else if (order_acts === "ca_get") {
+                order_acts = order_data[0].cert;
+            } else if (order_acts === "ca_key") {
+                order_acts = order_data[0].keys;
+            } else if (order_acts === "re_new") {
+                await saves.updateDB(c.env.DB, "Apply", {flag: 0}, {uuid: order_uuid})
+            } else if (order_acts === "rm_key") {
+                await saves.updateDB(c.env.DB, "Apply", {keys: ""}, {uuid: order_uuid})
+            } else if (order_acts === "ca_del") {
+                // todo 发起吊销
+            } else
+                return c.json({"flags": 5, "texts": "请求操作无效", "order": order_acts});
+            return c.json({"flags": 0, "texts": "执行操作成功", "order": order_acts});
+        }
     } catch (error) {
         return c.json({"flags": 3, "texts": "请求数据无效: " + error}, 400);
     }
 })
+
 
 // 用户注册 ###############################################################################
 app.get('/setup/', async (c) => {
@@ -99,15 +151,21 @@ app.get('/login/', async (c) => {
     return users.userPost(c)
 })
 
+app.use('/check/', async (c) => {
+    if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
+    let user_email: string | undefined = local.getCookie(c, 'mail');
+    return c.json({"flags": 0, "texts": user_email}, 200);
+})
+
 // 退出登录 ###############################################################################
-app.get('/exits', async (c) => {
+app.get('/exits/', async (c) => {
     return users.userExit(c)
 })
 
 // 退出登录 ###############################################################################
 app.get('/tests/', async (c) => {
-    await certs.Processing(c.env);
-    return c.json({})
+    let result: any[] = await certs.Processing(c.env);
+    return c.json(result)
 })
 
 app.fire()
