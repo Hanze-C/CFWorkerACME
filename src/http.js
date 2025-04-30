@@ -57,13 +57,17 @@ class HttpClient {
         /* Request */
         log(`HTTP request: ${method} ${url}`);
         // const resp = await axios.request(opts);
-
-        let resp = await xior.request(opts);
-        const headers = {};
-        for (const [key, value] of resp.headers) {
-            headers[key] = value;
+        try {
+            let resp = await xior.request(opts);
+            const headers = {};
+            for (const [key, value] of resp.headers) {
+                headers[key] = value;
+            }
+            resp.headers = headers
+        } catch (err) {
+            console.error(err);
         }
-        resp.headers = headers
+
 
         // const resp = await fetch(new Request(url, {
         //     headers: opts.headers,
