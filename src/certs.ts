@@ -102,7 +102,7 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
     }
     await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
     await saves.updateDB(env.DB, "Apply", {flag: 2}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {text: "解析设置成功"}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB, "Apply", {text: "域名处理成功"}, {uuid: order_info['uuid']})
     console.log(domain_save);
     return {"texts": "处理成功"};
 }
