@@ -6,12 +6,16 @@ import {Hono} from 'hono'
 import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
 import manifest from '__STATIC_CONTENT_MANIFEST'
 import {opDomain} from "./certs";
+// import {handle} from 'hono/vercel'
 
+// export const runtime = 'edge'
+// const app = new Hono().basePath('/')
 
 // 绑定数据 ###############################################################################
 export type Bindings = {
-    DB: D1Database, MAIL_KEYS: String, MAIL_SEND: String,
-    DCV_AGENT: String, DCV_EMAIL: String, DCV_TOKEN: String, DCV_ZONES: String
+    DB: D1Database, MAIL_KEYS: string, MAIL_SEND: string,
+    DCV_AGENT: string, DCV_EMAIL: string, DCV_TOKEN: string, DCV_ZONES: string,
+    GTS_keyMC: string, GTS_keyID: string, GTS_KeyTS: string, GTS_useIt: string
 }
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
@@ -168,9 +172,54 @@ app.get('/tests/', async (c) => {
     return c.json(result)
 })
 
-app.fire()
+
+import xior from 'xior';
+
+app.use('/fetch/', async (c) => {
+    try {
+        const response = await fetch("https://acme-v02.api.letsencrypt.org/directory");
+        const jsonData = await response.text();
+        console.log('Request Data:', jsonData);
+        return c.json({"flag": true, "data": jsonData})
+    } catch (err) {
+        console.error('Request Fail:', err);
+        return c.json({"flag": false, "data": err})
+    }
+})
+
+app.use('/xiors/', async (c) => {
+    let opts: Record<string, any> = {}
+    opts['url'] = "https://acme-v02.api.letsencrypt.org/directory";
+    opts["method"] = "GET";
+    console.log("Request URLs: " + opts.url)
+    try {
+        let resp = await xior.request(opts);
+        console.log("Request Data: " + resp)
+        return c.json({"flag": true, "data": resp})
+    } catch (err) {
+        console.error("Request Fail: " + err);
+        return c.json({"flag": false, "data": err})
+    }
+})
+
+app.use('/encry/', async (c) => {
+    try {
+        const response = await fetch("https://encrys.524228.xyz/directory");
+        const jsonData = await response.json();
+        console.log('Request Data:', jsonData);
+        return c.json({"flag": true, "data": jsonData})
+    } catch (err) {
+        console.error('Request Fail:', err);
+        return c.json({"flag": false, "data": err})
+    }
+})
+
+
+// app.fire()
+
 // 定时任务 ############################################################################################################
 export default {
+    app,
     async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
         return app.fetch(request, env, ctx);
     },

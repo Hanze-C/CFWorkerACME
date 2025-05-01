@@ -2,11 +2,11 @@
  * ACME HTTP client
  */
 
-const {createHmac, createSign, constants: {RSA_PKCS1_PADDING}} = require('crypto');
-const {getJwk} = require('./crypto');
-const {log} = require('./logger');
+const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('crypto');
+const { getJwk } = require('./crypto');
+const { log } = require('./logger');
 const axios = require('./axios');
-import xior from 'xior';
+// import xior from 'xior';
 
 /**
  * ACME HTTP client
@@ -45,8 +45,9 @@ class HttpClient {
     async request(url, method, opts = {}) {
         opts.url = url;
         opts.method = method;
+        opts.adapter = "fetch"
         opts.validateStatus = null;
-        console.log("Request URL: " + opts.url)
+        // console.log(opts.url)
         /* Headers */
         if (typeof opts.headers === 'undefined') {
             opts.headers = {};
@@ -56,97 +57,18 @@ class HttpClient {
 
         /* Request */
         log(`HTTP request: ${method} ${url}`);
-        // const resp = await axios.request(opts);
-        try {
-            let resp = await xior.request(opts);
-            const headers = {};
-            for (const [key, value] of resp.headers) {
-                headers[key] = value;
-            }
-            resp.headers = headers
-        } catch (err) {
-            console.error(err);
-        }
-
-
-        // const resp = await fetch(new Request(url, {
-        //     headers: opts.headers,
-        //     method: opts.method,
-        // }));
-        // console.log(resp)
-        // let new_resp = {}
-        // try{
-        //     const jsonText = await resp.json();
-        //     console.log("resp.data:", jsonText)
-        //     console.log(JSON.stringify(jsonText));
-        //     resp.data = jsonText;
-        // }catch(e){
-        //     const jsonText = await resp.text();
-        //     console.log("resp.data:", jsonText)
-        //     console.log(jsonText);
-        //     resp.data = jsonText;
-        // }
+        const resp = await axios.request(opts);
+        // let resp = await xior.request(opts);
         // const headers = {};
         // for (const [key, value] of resp.headers) {
         //     headers[key] = value;
         // }
-        // new_resp.headers = headers
-        // new_resp.data = resp.data
-        // new_resp.status = resp.status;
-        // new_resp.ok = resp.ok;
-        // new_resp.redirected = resp.redirected;
-        // new_resp.body = resp.body;
-        // new_resp.url = resp.url
-        // console.log(new_resp)
+        // resp.headers = headers
 
-        // console.log("resp.data:", resp.data)
-        // console.log(resp)
         log(`RESP ${resp.status} ${method} ${url}`);
-        // return new_resp;
         return resp;
     }
 
-    // async request(url, method, opts = {}) {
-    //     // 设置请求的 URL 和方法
-    //     opts.url = url;
-    //     opts.method = method;
-    //
-    //     // 设置请求的默认行为，比如不自动处理 HTTP 错误状态码
-    //     opts.validateStatus = null;
-    //
-    //     /* 设置请求头 */
-    //     if (typeof opts.headers === 'undefined') {
-    //         opts.headers = {};
-    //     }
-    //
-    //     opts.headers['Content-Type'] = 'application/jose+json';
-    //
-    //     /* 发起请求 */
-    //     log(`HTTP request: ${method} ${url}`);
-    //     // 正确使用 fetch 的配置对象
-    //     const response = await fetch(url, {
-    //         method: method, // 正确地将方法放在配置对象的 method 属性中
-    //         headers: opts.headers,
-    //         body: opts.data // 如果请求方法是 POST、PUT 等，且有请求体，则包含它
-    //     });
-    //
-    //     // 处理响应数据
-    //     let respData;
-    //     try {
-    //         respData = await response.json(); // 假设返回的是 JSON 格式数据
-    //     } catch (e) {
-    //         // 如果不是 JSON 格式，可以尝试其他方式处理，比如 text()
-    //         respData = await response.text();
-    //     }
-    //
-    //     log(`RESP ${response.status} ${method} ${url}`);
-    //     // 返回一个类似 axios 响应对象的结构
-    //     return {
-    //         data: respData,
-    //         status: response.status,
-    //         statusText: response.statusText
-    //     };
-    // }
     /**
      * Get ACME provider directory
      *
@@ -203,7 +125,7 @@ class HttpClient {
     async getNonce() {
         const url = await this.getResourceUrl('newNonce');
         const resp = await this.request(url, 'head');
-        // console.log(resp.headers,resp.headers['replay-nonce']);
+
         if (!resp.headers['replay-nonce']) {
             throw new Error('Failed to get nonce from ACME provider');
         }
@@ -257,8 +179,8 @@ class HttpClient {
      * @returns {object} Signed HTTP request body
      */
 
-    prepareSignedBody(alg, url, payload = null, {nonce = null, kid = null} = {}) {
-        const header = {alg, url};
+    prepareSignedBody(alg, url, payload = null, { nonce = null, kid = null } = {}) {
+        const header = { alg, url };
 
         /* Nonce */
         if (nonce) {
@@ -269,7 +191,8 @@ class HttpClient {
         /* KID or JWK */
         if (kid) {
             header.kid = kid;
-        } else {
+        }
+        else {
             header.jwk = this.getJwk();
         }
 
@@ -292,8 +215,8 @@ class HttpClient {
      * @returns {object} Signed HMAC request body
      */
 
-    createSignedHmacBody(hmacKey, url, payload = null, {nonce = null, kid = null} = {}) {
-        const result = this.prepareSignedBody('HS256', url, payload, {nonce, kid});
+    createSignedHmacBody(hmacKey, url, payload = null, { nonce = null, kid = null } = {}) {
+        const result = this.prepareSignedBody('HS256', url, payload, { nonce, kid });
 
         /* Signature */
         const signer = createHmac('SHA256', Buffer.from(hmacKey, 'base64')).update(`${result.protected}.${result.payload}`, 'utf8');
@@ -315,7 +238,7 @@ class HttpClient {
      * @returns {object} JWS request body
      */
 
-    createSignedBody(url, payload = null, {nonce = null, kid = null} = {}) {
+    createSignedBody(url, payload = null, { nonce = null, kid = null } = {}) {
         const jwk = this.getJwk();
         let headerAlg = 'RS256';
         let signerAlg = 'SHA256';
@@ -327,14 +250,15 @@ class HttpClient {
             if (jwk.crv === 'P-384') {
                 headerAlg = 'ES384';
                 signerAlg = 'SHA384';
-            } else if (jwk.crv === 'P-521') {
+            }
+            else if (jwk.crv === 'P-521') {
                 headerAlg = 'ES512';
                 signerAlg = 'SHA512';
             }
         }
 
         /* Prepare body and signer */
-        const result = this.prepareSignedBody(headerAlg, url, payload, {nonce, kid});
+        const result = this.prepareSignedBody(headerAlg, url, payload, { nonce, kid });
         const signer = createSign(signerAlg).update(`${result.protected}.${result.payload}`, 'utf8');
 
         /* Signature - https://stackoverflow.com/questions/39554165 */
@@ -362,11 +286,7 @@ class HttpClient {
      * @returns {Promise<object>} HTTP response
      */
 
-    async signedRequest(url, payload, {
-        kid = null,
-        nonce = null,
-        includeExternalAccountBinding = false
-    } = {}, attempts = 0) {
+    async signedRequest(url, payload, { kid = null, nonce = null, includeExternalAccountBinding = false } = {}, attempts = 0) {
         if (!nonce) {
             nonce = await this.getNonce();
         }
@@ -378,13 +298,13 @@ class HttpClient {
                 const eabKid = this.externalAccountBinding.kid;
                 const eabHmacKey = this.externalAccountBinding.hmacKey;
 
-                payload.externalAccountBinding = this.createSignedHmacBody(eabHmacKey, url, jwk, {kid: eabKid});
+                payload.externalAccountBinding = this.createSignedHmacBody(eabHmacKey, url, jwk, { kid: eabKid });
             }
         }
 
         /* Sign body and send request */
-        const data = this.createSignedBody(url, payload, {nonce, kid});
-        const resp = await this.request(url, 'post', {data});
+        const data = this.createSignedBody(url, payload, { nonce, kid });
+        const resp = await this.request(url, 'post', { data });
 
         /* Retry on bad nonce - https://datatracker.ietf.org/doc/html/rfc8555#section-6.5 */
         if (resp.data && resp.data.type && (resp.status === 400) && (resp.data.type === 'urn:ietf:params:acme:error:badNonce') && (attempts < this.maxBadNonceRetries)) {
@@ -392,7 +312,7 @@ class HttpClient {
             attempts += 1;
 
             log(`Caught invalid nonce error, retrying (${attempts}/${this.maxBadNonceRetries}) signed request to: ${url}`);
-            return this.signedRequest(url, payload, {kid, nonce, includeExternalAccountBinding}, attempts);
+            return this.signedRequest(url, payload, { kid, nonce, includeExternalAccountBinding }, attempts);
         }
 
         /* Return response */

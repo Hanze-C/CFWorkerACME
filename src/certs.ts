@@ -8,6 +8,7 @@ import {hmacSHA2} from "./users";
 
 const ssl: Record<string, any> = {
     "lets-encrypt": acme.directory.letsencrypt.production,
+    // "lets-encrypt": "https://encrys.524228.xyz/directory",
     "google-trust": acme.directory.google.production,
     "bypass-trust": acme.directory.buypass.production
 }
@@ -33,7 +34,7 @@ export async function Processing(env: Bindings) {
 // 新增证书订单 =====================================================================================
 export async function newApply(env: Bindings, order_user: any, order_info: any) {
     // 获取申请域名信息 =============================================================================
-    let client_data: any = await getStart(order_user, order_info); // 获取域名证书的申请操作接口
+    let client_data: any = await getStart(env, order_user, order_info); // 获取域名证书的申请操作接口
     let domain_list: any = await getNames(order_info, true) // 获取当前申请域名的详细信息和类型
     console.log(order_info, domain_list);
     try {
@@ -56,7 +57,7 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
 export async function setApply(env: Bindings, order_user: any, order_info: any) {
     let domain_list: any = order_info['list'];
     let orders_text: any = JSON.parse(order_info['data'])
-    let client_data: any = await getStart(order_user, order_info);
+    let client_data: any = await getStart(env, order_user, order_info);
     let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
     // console.log(domain_list, orders_data);
     // 执行验证部分 ================================================================================
@@ -135,7 +136,7 @@ export async function opDomain(env: Bindings, order_user: any, order_info: any, 
 export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) {
     let domain_list: any = order_info['list'];
     let orders_text: any = JSON.parse(order_info['data'])
-    let client_data: any = await getStart(order_user, order_info);
+    let client_data: any = await getStart(env, order_user, order_info);
     let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
     let author_save: Record<string, Record<string, any>> = await getAuthy(client_data, orders_data)
     // 验证所有域名 ================================================================================
@@ -188,7 +189,7 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
 // 完成证书申请 #######################################################################################################
 export async function getCerts(env: Bindings, order_user: any, order_info: any) {
     let orders_text: any = JSON.parse(order_info['data'])
-    let client_data: any = await getStart(order_user, order_info);
+    let client_data: any = await getStart(env, order_user, order_info);
     let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
     console.log(orders_data);
     console.log('Orders Remote Verify Status:', orders_data.status);
@@ -246,10 +247,14 @@ async function getNames(order_info: any, full: boolean = false) {
 }
 
 // 获取操作接口 ####################################################################################
-async function getStart(order_user: any, order_info: any) {
+async function getStart(env: Bindings, order_user: any, order_info: any) {
     let client_data: Client = new acme.Client({
         directoryUrl: ssl[order_info['sign']],
-        accountKey: order_user['keys'],
+        accountKey: order_info.sign === "google-trust" ? env.GTS_KeyTS : order_user['keys'],
+        externalAccountBinding: order_info.sign === "google-trust" ? {
+            kid: env.GTS_keyID,
+            hmacKey: env.GTS_keyMC,
+        } : undefined,
     });
     try { // 获取账户信息 ================================
         client_data.getAccountUrl();

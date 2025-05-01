@@ -13,7 +13,12 @@
     "DCV_AGENT": "",
     "DCV_EMAIL": "account@example.com",
     "DCV_TOKEN": "",
-    "DCV_ZONES": ""
+    "DCV_ZONES": "",
+    "GTS_useIt": "",
+    "GTS_keyMC": "",
+    "GTS_keyID": "",
+    "GTS_KeyTS": ""
+
   },
   "site": {
     "bucket": "./public"
