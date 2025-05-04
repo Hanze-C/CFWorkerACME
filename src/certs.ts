@@ -8,8 +8,8 @@ import {hmacSHA2} from "./users";
 
 
 const ssl: Record<string, any> = {
-    "lets-encrypt": acme.directory.letsencrypt.production,
-    // "lets-encrypt": "https://encrys.524228.xyz/directory",
+    // "lets-encrypt": acme.directory.letsencrypt.production,
+    "lets-encrypt": "https://encrys.524228.xyz/directory",
     "google-trust": acme.directory.google.production,
     "bypass-trust": acme.directory.buypass.production
 }
