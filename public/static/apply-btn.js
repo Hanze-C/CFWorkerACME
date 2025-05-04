@@ -8,12 +8,20 @@ function applyCert() {
         const wildcardInput = row.querySelector('input[name^="domains"][name$="[wildcard]"]');
         const includeRootInput = row.querySelector('input[name^="domains"][name$="[include_root]"]');
         const verificationSelect = row.querySelector('select[name^="domains"][name$="[verification]"]');
-        domainList.push({
-            name: domainInput.value,
-            wild: wildcardInput.checked,
-            root: includeRootInput.checked,
-            type: verificationSelect.value,
-        });
+        if (!wildcardInput.checked || includeRootInput.checked)
+            domainList.push({
+                name: domainInput.value,
+                wild: false,
+                root: includeRootInput.checked,
+                type: verificationSelect.value,
+            });
+        if (wildcardInput.checked)
+            domainList.push({
+                name: "*." + domainInput.value,
+                wild: wildcardInput.checked,
+                root: includeRootInput.checked,
+                type: verificationSelect.value,
+            });
     });
     // 提取全局设置
     const caSelect = document.querySelector('select[name="ca"]');

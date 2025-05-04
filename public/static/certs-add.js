@@ -31,7 +31,7 @@
                         <select name="domains[${domainNum}][verification]" class="form-select" style="min-width: 100px">
                             <option value="dns-self">TXT 手动验证（修改DNS的TXT记录）</option>
 <!--                            <option value="web-self">WEB 手动验证（手动HTTP文件验证）</option>-->
-<!--                            <option value="dns-auto">TXT 自动验证（需要DNS配置CNAME）</option>-->
+                            <option value="dns-auto">TXT 自动验证（需要DNS配置CNAME）</option>
 <!--                            <option value="web-auto">WEB 手动验证（不支持通配符域名）</option>-->
 <!--                            <option value="dns-ddns">TXT 自动验证（需要配置DDNS账号）</option>-->
                         </select>

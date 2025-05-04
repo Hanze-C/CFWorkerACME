@@ -44,10 +44,12 @@
         }
 
         .verification-info {
-            background: rgba(18, 129, 236, 0.5);
+            background: rgba(255, 255, 255, 0.5);
             backdrop-filter: blur(10px);
-            border-radius: 5px;
+            border-radius: 2px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            padding: 2px 10px 2px 10px;
+            font-weight: bolder;
         }
 
         .btn-verify {
@@ -152,7 +154,7 @@
                         <div class="d-flex align-items-center flex-grow-1">
                             <label class="nowrap me-2">域名：</label>
                             <span>${domain.name}</span>&nbsp;
-                            <span>(${domain.wild ? (domain.root ? '通配符+根域名' : '通配符') : '常规'})</span>
+                            <span>(${domain.wild ? '通配符' : '域名根'})</span>
                         </div>
 
                         <div class="d-flex align-items-center">
@@ -180,15 +182,19 @@
                             <p><strong>验证要求：</strong>请添加以下TXT记录到您的DNS解析设置：</p>
                             <p><div style="display: flex; align-items: center;">
                                 <strong>记录名称：</strong><div class="verification-info" onclick="autoCopy(this)">
-                                __acme_challenge.${domain.name}</div>
+                                _acme-challenge.${domain.name}</div>
                             </div></p>
                             <p><div style="display: flex; align-items: center;">
                                 <strong>记录类型：</strong><div class="verification-info" onclick="autoCopy(this)"
-                                >TXT</div>
+                                >${domain.type === 'dns-auto' ? 'CNAME (注意：并不是TXT记录)' : 'TXT'}</div>
                             </div></p>
                             <p><div style="display: flex; align-items: center;">
                                 <strong>记录内容：</strong><div class="verification-info" onclick="autoCopy(this)"
-                                >${domain.auth}</div>
+                                >${domain.type === 'dns-auto' ? domain.auto : domain.auth}</div>
+                            </div></p>
+                            <p><div style="display: flex; align-items: center;">
+                                <strong>验证方式：</strong><div class="verification-info" onclick="autoCopy(this)"
+                                >nslookup -q=${domain.type === 'dns-auto' ? 'CNAME' : 'TXT'} _acme-challenge.${domain.name}</div>
                             </div></p>
                         </div>
                     </div>
@@ -272,7 +278,6 @@
     }
 
 
-
     function saveFile(data, fileName = 'download') {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([data]));
@@ -318,6 +323,7 @@
             } else document.getElementById('cert_done').remove();
         }
     }
+
     srtGravatar()
     onLoader();
     // setActive("certs");

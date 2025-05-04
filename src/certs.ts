@@ -1,6 +1,7 @@
 import * as acme from 'acme-client';
 import {Client} from "acme-client";
 import * as saves from './saves'
+import * as agent from "./agent";
 import * as query from "./query";
 import {Bindings} from './index'
 import {hmacSHA2} from "./users";
@@ -17,17 +18,17 @@ const ssl: Record<string, any> = {
 export async function Processing(env: Bindings) {
     let order_list: any = await saves.selectDB(env.DB, "Apply", {flag: {value: 5, op: "!="}});
     let result: any[] = []
-    for (const id in order_list) { // 获取信息 =====================================================
+    for (const id in order_list) { // 获取信息 ==================================================================
         let order_info = order_list[id]; // 获取当前订单详细情况
         let order_mail = order_info['mail']; // 当前订单用户邮箱
         let order_user: any = (await saves.selectDB( // 查询申请者信息
-            env.DB, "Users", {mail: {value: order_mail}}))[0]; // 按不同阶段分配程序处理 ====
+            env.DB, "Users", {mail: {value: order_mail}}))[0]; // 按不同阶段分配程序处理 ========================
         if (order_info['flag'] == 0) result.push(await newApply(env, order_user, order_info));// 执行创建订单操作
         if (order_info['flag'] == 1) result.push(await setApply(env, order_user, order_info));// 自动执行域名代理
         if (order_info['flag'] == 2) result.push(await opDomain(env, order_user, order_info, []));// 自动验证域名
         if (order_info['flag'] == 3) result.push(await dnsAuthy(env, order_user, order_info));// 自动执行域名验证
         if (order_info['flag'] == 4) result.push(await getCerts(env, order_user, order_info));// 自动执行获取证书
-    } // ===========================================================================================
+    } // ========================================================================================================
     return result;
 }
 
@@ -36,7 +37,7 @@ export async function newApply(env: Bindings, order_user: any, order_info: any) 
     // 获取申请域名信息 =============================================================================
     let client_data: any = await getStart(env, order_user, order_info); // 获取域名证书的申请操作接口
     let domain_list: any = await getNames(order_info, true) // 获取当前申请域名的详细信息和类型
-    console.log(order_info, domain_list);
+    // console.log("domain_list: ", domain_list);
     try {
         let orders_data: any = JSON.stringify(await client_data.createOrder({identifiers: domain_list}));
         // 写入订单详细数据 =============================================================================
@@ -63,48 +64,47 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
     // 执行验证部分 ================================================================================
     let author_save: Record<string, Record<string, any>> = await getAuthy(client_data, orders_data)
     let domain_save: any[] = []
+    let domain_flag: number = 2
+    let domain_text: string = ""
+    for (let domain_item of JSON.parse(domain_list)) {
+        if (domain_item['type'] == "dns-auto") {
+            await agent.dnsDel(env, domain_item['auto']); // 删除原来
+        }
+    }
     for (let domain_item of JSON.parse(domain_list)) {
         let domain_name = domain_item.name;
+        // if (domain_item.wild) domain_name = "*." + domain_name
         // console.log(domain_name, author_save, author_save[domain_name]);
         if (author_save[domain_name] == undefined) continue;
+        console.log(author_save);
         domain_item['auth'] = author_save[domain_name]['text'];
         if (domain_item['type'] == "dns-auto") {
-            let domain_auto = await hmacSHA2(domain_name, order_user['mail'])
+            let domain_auto = await hmacSHA2(domain_name.replaceAll("*.", ""), order_user['mail'])
             domain_item['auto'] = domain_auto.substring(0, 16) + "." + env.DCV_AGENT
             // console.log(domain_item['auto'])
-            try {
-                const response = await fetch(
-                    `https://api.cloudflare.com/client/v4/zones/${env.DCV_ZONES}/dns_records`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Auth-Email': env.DCV_EMAIL,
-                            'X-Auth-Key': env.DCV_TOKEN,
-                        },
-                        body: JSON.stringify({
-                            comment: 'DCV-Agent#' + Date.now() + '@' + domain_name,
-                            content: domain_item['auth'],
-                            name: domain_item['auto'] + env.DCV_AGENT,
-                            ttl: 60,
-                            type: 'TXT'
-                        })
-                    }
-                );
-                const data = await response.json();
-                console.log('Success:', data);
+            try { // 设置域名内容 ====================================================
+                let data: Record<string, any> = await agent.dnsAdd(
+                    env, domain_item, domain_name);
+                if (data['success']) {
+                    domain_item.flag = 2
+                } else {
+                    domain_item.flag = 1
+                    domain_flag = 1
+                    domain_text += domain_item.name +
+                        ": 无法设置DNS记录: " + data['errors'][0]['message'].toString()
+                }
             } catch (error) {
                 console.error('Error:', error);
             }
         }
-        domain_item.flag = 2
         domain_save.push(domain_item);
     }
+    if (domain_text.length == 0) domain_text = "域名处理成功"
     await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {flag: 2}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {text: "域名处理成功"}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB, "Apply", {text: domain_text}, {uuid: order_info['uuid']})
     console.log(domain_save);
-    return {"texts": "处理成功"};
+    return {"texts": domain_text};
 }
 
 // 修改验证状态 =====================================================================================
@@ -112,13 +112,14 @@ export async function opDomain(env: Bindings, order_user: any, order_info: any, 
     let domain_list: any = order_info['list'];
     // 执行操作部分 =================================================================================
     let domain_save: any[] = []
+    let domain_flag: number = 3
     for (let domain_item of JSON.parse(domain_list)) {
         console.log(domain_item, sets_list);
         console.log(sets_list.some(item => item.toLowerCase() === domain_item.name.toLowerCase()));
         if (sets_list.some(item => item.toLowerCase() === domain_item.name.toLowerCase()
             || item.toLowerCase() === "all")) {
             domain_item.flag = 3;
-        }
+        } else domain_flag = 2;
         if (sets_list.length == 0 && domain_item.flag == 3) {
             await dnsAuthy(env, order_user, order_info);
             break;
@@ -128,6 +129,7 @@ export async function opDomain(env: Bindings, order_user: any, order_info: any, 
     if (sets_list.length !== 0) {
         await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
         await saves.updateDB(env.DB, "Apply", {text: "订单域名验证状态修改成功"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
     }
     return {"texts": "处理成功"};
 }
@@ -201,7 +203,7 @@ export async function getCerts(env: Bindings, order_user: any, order_info: any) 
         if (order_info['type'] == "eccp384") privateKeyText = await acme.crypto.createPrivateEcdsaKey('P-384');
         let [privateKeyBuff, certificateCSR] = await acme.crypto.createCsr({ // 创建证书请求 ==============================
             altNames: domainsListCSR, commonName: domainsListCSR[0], country: order_info['C'], state: order_info['S'],
-            locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU'],
+            locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU']
         }, privateKeyText);
         await saves.updateDB(env.DB, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
         const finish_text: any = await client_data.finalizeOrder(orders_data, certificateCSR);// 最终确认订单
@@ -232,16 +234,18 @@ async function getNames(order_info: any, full: boolean = false) {
     let domain_data = JSON.parse(order_info['list']);
     for (const uid in domain_data) {
         const domain_now = domain_data[uid];
-        console.log("domain_now: ", domain_now);
+        // console.log("domain_now: ", domain_now);
         const author_now = domain_now['type'].split("-")[0]
-        if (domain_now['wild']) { // 先处理通配符的情况 ===================================
-            if (full) domain_save.push({type: author_now, value: "*." + domain_now['name']});
-            else domain_save.push("*." + domain_now['name']);
-        } // 如果不是通配符，或者通配符勾选了根域名的情况，也要添加域名本身 ===================
-        if (!domain_now['wild'] || domain_now['root']) {
-            if (full) domain_save.push({type: author_now, value: domain_now['name']});
-            else domain_save.push(domain_now['name']);
-        }
+        // if (domain_now['wild']) { // 先处理通配符的情况 =======================================
+        //     if (full) domain_save.push({type: author_now, value: "*." + domain_now['name']});
+        //     else domain_save.push("*." + domain_now['name']);
+        // } // 如果不是通配符，或者通配符勾选了根域名的情况，也要添加域名本身 ===================
+        // else {
+        //     if (full) domain_save.push({type: author_now, value: domain_now['name']});
+        //     else domain_save.push(domain_now['name']);
+        // }
+        if (full) domain_save.push({type: author_now, value: domain_now['name']});
+        else domain_save.push(domain_now['name']);
     }
     return domain_save;
 }
@@ -271,10 +275,13 @@ async function getStart(env: Bindings, order_user: any, order_info: any) {
 async function getAuthy(client_data: any, orders_data: any) {
     let author_list: any[] = await client_data.getAuthorizations(orders_data);
     let author_maps: Record<string, any> = {}
+    // console.log("author_list: ", author_list);
     for (const author_data of author_list) {
         // 待验证信息 ======================================
         let author_info: any = author_data['identifier'];
         let author_name: string = author_info['value'];
+        if (author_data['wildcard'] === true)
+            author_name = "*." + author_name;
         // let author_type: string = author_info['type'];
         // 查找DNS验证信息 =================================
         let author_save = undefined
@@ -303,22 +310,22 @@ async function getAuthy(client_data: any, orders_data: any) {
 async function dnsCheck(author_save: any, domain_item: any) {
     if (author_save[domain_item.name] == undefined) return false;
     // 设置数据 =============================================
-    let domain_name = domain_item.name; // 待验证的域名
+    let domain_name = domain_item.name.replaceAll("*.", "")
     let author_text = domain_item.auth; // 目标解析记录
     let domain_type = "TXT" // 待验证域名格式文本TXT
     if (domain_item.type == "dns-auto") { // 如果DNS-AUTO模式
         domain_type = "CNAME" // 此时需检查CNAME而不是TXT记录
         author_text = domain_item.auto // 验证内容也改为CNAME
     } // 查询DNS ============================================
-    let author_flag: boolean = false // 有一个DNS不对则全错误
+    let author_flag: boolean = false // 任意一个DNS正确则通过
     let record_list: any = await query.queryDNS(
         "_acme-challenge." + domain_name, domain_type)
     // console.log('Records for', domain_name, ':');
     for (let record_item of record_list) { // 查询所有DNS记录
-        if (record_item['data'] == author_text)
-            author_flag = true
-        else {
-            author_flag = false
+        console.log(record_item['data']);
+        console.log(author_text);
+        if (record_item['data'] == author_text) {
+            author_flag = true;
             break;
         }
     }
