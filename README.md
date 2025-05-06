@@ -1,8 +1,8 @@
 
 
-# SSL Helper - CloudFlare Worker SSL Certificate Application Agent
+# SSL Helper - SSL Cert Apply Agent on CloudFlare Worker
 
-# SSL证书助手 - 基于CloudFlare Worker 的SSL证书代理申请平台
+# SSL证书助手 - 基于CF Worker 的SSL证书代理申请平台
 
 
 
