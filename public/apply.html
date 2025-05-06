@@ -13,9 +13,9 @@
     <script src="static/apply-btn.js"></script>
 </head>
 <body>
-<div class="container">
+<div class="container" style="max-width: 1600px">
     <div id="sides-bar"></div>
-    <div class="form-container" style="max-width:1210px;width: 95%;">
+    <div class="form-container" style="max-width:1440px;min-width:400px;width: 100%;">
         <h1>SSL 证书申请</h1>
         <form id="ssl-form">
             <!-- 域名设置部分 -->
@@ -23,7 +23,8 @@
                 <h2>域名设置</h2>
                 <div id="domain-container"></div>
                 <button type="button" class="btn btn-primary add-btn"
-                        id="add-domain-btn" onclick="addDomainRow()">增加域名</button>
+                        id="add-domain-btn" onclick="addDomainRow()">增加域名
+                </button>
             </div>
 
             <!-- 全局设置部分 -->
@@ -33,14 +34,16 @@
                     <div class="d-flex align-items-center flex-grow-1" style="min-width: 270px;">
                         <label class="nowrap me-2">证书厂商：</label>
                         <select name="ca" class="form-select flex-grow">
-                            <option value="google-trust">Google Trust Service（不支持中文域名）</option>
-<!--                            <option value="lets-encrypt">Let's Encrypt Global（测试中请勿使用）</option>-->
-<!--                            <option value="bypass-trust">Bypass Trust Service（不能通配符）</option>-->
+                            <option value="google-trust">Google Trust Service（优先使用，不支持中文域名）</option>
+                            <option value="lets-encrypt">Let's Encrypt Global（失败备用，申请速度比较慢）</option>
+                            <option value="bypass-trust">Bypass Trust Service（有效期六月但不支持通配符）</option>
+                            <option value="zeroca-trust">ZeroSSL Free Service（失败备用，申请速度比较慢）</option>
+                            <option value="sslcom-trust">SSL.com Free Service（失败备用，申请速度比较慢）</option>
                         </select>
                     </div>
 
-                    <div class="d-flex align-items-center flex-grow-1" style="min-width: 270px;">
-                        <label class="nowrap me-2">到期前7天续期 (自动验证)</label>
+                    <div class="d-flex align-items-center flex-grow-1" style="min-width: 200px;">
+                        <label class="nowrap me-2">到期前7天自动续期</label>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="auto-renew" name="auto_renew">
                         </div>
@@ -99,7 +102,6 @@
         </form>
     </div>
 </div>
-
 
 
 <script>

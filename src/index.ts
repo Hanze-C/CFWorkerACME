@@ -13,9 +13,11 @@ import {opDomain} from "./certs";
 
 // 绑定数据 ###############################################################################
 export type Bindings = {
-    DB: D1Database, MAIL_KEYS: string, MAIL_SEND: string,
+    DB_CF: D1Database, MAIL_KEYS: string, MAIL_SEND: string, SIGN_AUTH: string,
     DCV_AGENT: string, DCV_EMAIL: string, DCV_TOKEN: string, DCV_ZONES: string,
-    GTS_keyMC: string, GTS_keyID: string, GTS_KeyTS: string, GTS_useIt: string
+    GTS_keyMC: string, GTS_keyID: string, GTS_KeyTS: string, GTS_useIt: string,
+    SSL_keyMC: string, SSL_keyID: string, SSL_KeyTS: string, SSL_useIt: string,
+    ZRO_keyMC: string, ZRO_keyID: string, ZRO_KeyTS: string, ZRO_useIt: string
 }
 const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
@@ -54,7 +56,7 @@ app.use('/apply/', async (c) => {
         }
         // console.log(domain_save);
         let uuid = await users.newNonce(16)
-        await saves.insertDB(c.env.DB, "Apply", {
+        await saves.insertDB(c.env.DB_CF, "Apply", {
             uuid: uuid,
             mail: local.getCookie(c, 'mail'),
             sign: upload_json['globals']['ca'],
@@ -87,14 +89,14 @@ app.use('/order/', async (c) => {
     if (!user_email) return c.json({"flags": 4, "texts": "用户尚未登录"}, 401);
     // 读取数据 ============================================================================
     try {
-        let order_data: Record<string, any>[] = []
+        let order_data: Record<string, any>[];
         if (order_uuid == "all") {
-            order_data = await saves.selectDB(c.env.DB, "Apply", {
+            order_data = await saves.selectDB(c.env.DB_CF, "Apply", {
                 mail: {value: user_email}
             });
             console.log(user_email, order_data)
         } else {
-            order_data = await saves.selectDB(c.env.DB, "Apply", {
+            order_data = await saves.selectDB(c.env.DB_CF, "Apply", {
                 uuid: {value: order_uuid},
                 mail: {value: user_email}
             });
@@ -106,16 +108,16 @@ app.use('/order/', async (c) => {
             return c.json({"flags": 0, "order": order_save}, 200);
         } else { // 对订单执行操作 ----------------------------------------------------------
             if (order_acts === "verify" && order_data[0].flag == 2) {// 提交验证请求
-                await saves.updateDB(c.env.DB, "Apply", {flag: 3}, {uuid: order_uuid})
+                await saves.updateDB(c.env.DB_CF, "Apply", {flag: 3}, {uuid: order_uuid})
                 let order_info = order_data[0]; // 获取当前订单详细情况
                 let order_mail = order_info['mail']; // 当前订单用户邮箱
                 let order_user: any = (await saves.selectDB( // 查询申请者信息
-                    c.env.DB, "Users", {mail: {value: order_mail}}))[0];
+                    c.env.DB_CF, "Users", {mail: {value: order_mail}}))[0];
                 await opDomain(c.env, order_user, order_info, ["all"]);
             } else if (order_acts === "reload")
-                await saves.updateDB(c.env.DB, "Apply", {flag: 0}, {uuid: order_uuid})
+                await saves.updateDB(c.env.DB_CF, "Apply", {flag: 0}, {uuid: order_uuid})
             else if (order_acts === "modify" || order_acts === "cancel")
-                await saves.deleteDB(c.env.DB, "Apply", {uuid: order_uuid})
+                await saves.deleteDB(c.env.DB_CF, "Apply", {uuid: order_uuid})
             else if (order_acts === "single") {
                 order_acts += "-" + order_push
                 if (order_push == undefined || order_push == "undefined")
@@ -123,16 +125,16 @@ app.use('/order/', async (c) => {
                 let order_info = order_data[0]; // 获取当前订单详细情况
                 let order_mail = order_info['mail']; // 当前订单用户邮箱
                 let order_user: any = (await saves.selectDB( // 查询申请者信息
-                    c.env.DB, "Users", {mail: {value: order_mail}}))[0];
+                    c.env.DB_CF, "Users", {mail: {value: order_mail}}))[0];
                 await opDomain(c.env, order_user, order_info, [order_push]);
             } else if (order_acts === "ca_get") {
                 order_acts = order_data[0].cert;
             } else if (order_acts === "ca_key") {
                 order_acts = order_data[0].keys;
             } else if (order_acts === "re_new") {
-                await saves.updateDB(c.env.DB, "Apply", {flag: 0}, {uuid: order_uuid})
+                await saves.updateDB(c.env.DB_CF, "Apply", {flag: 0}, {uuid: order_uuid})
             } else if (order_acts === "rm_key") {
-                await saves.updateDB(c.env.DB, "Apply", {keys: ""}, {uuid: order_uuid})
+                await saves.updateDB(c.env.DB_CF, "Apply", {keys: ""}, {uuid: order_uuid})
             } else if (order_acts === "ca_del") {
                 // todo 发起吊销
             } else
@@ -214,8 +216,6 @@ app.use('/encry/', async (c) => {
     }
 })
 
-
-// app.fire()
 
 // 定时任务 ############################################################################################################
 export default {

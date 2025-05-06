@@ -1,28 +1,31 @@
 import * as acme from 'acme-client';
 import {Client} from "acme-client";
 import * as saves from './saves'
+import * as index from './index'
 import * as agent from "./agent";
 import * as query from "./query";
 import {Bindings} from './index'
 import {hmacSHA2} from "./users";
 
 
-const ssl: Record<string, any> = {
+const acme_url_map: Record<string, any> = {
     // "lets-encrypt": acme.directory.letsencrypt.production,
     "lets-encrypt": "https://encrys.524228.xyz/directory",
     "google-trust": acme.directory.google.production,
-    "bypass-trust": acme.directory.buypass.production
+    "bypass-trust": acme.directory.buypass.production,
+    "zeroca-trust": acme.directory.zerossl.production,
+    "sslcom-trust": "https://acme.ssl.com/sslcom-dv-",
 }
 
 // 整体处理进程 ====================================================================================
 export async function Processing(env: Bindings) {
-    let order_list: any = await saves.selectDB(env.DB, "Apply", {flag: {value: 5, op: "!="}});
+    let order_list: any = await saves.selectDB(env.DB_CF, "Apply", {flag: {value: 5, op: "!="}});
     let result: any[] = []
     for (const id in order_list) { // 获取信息 ==================================================================
         let order_info = order_list[id]; // 获取当前订单详细情况
         let order_mail = order_info['mail']; // 当前订单用户邮箱
         let order_user: any = (await saves.selectDB( // 查询申请者信息
-            env.DB, "Users", {mail: {value: order_mail}}))[0]; // 按不同阶段分配程序处理 ========================
+            env.DB_CF, "Users", {mail: {value: order_mail}}))[0]; // 按不同阶段分配程序处理 ========================
         if (order_info['flag'] == 0) result.push(await newApply(env, order_user, order_info));// 执行创建订单操作
         if (order_info['flag'] == 1) result.push(await setApply(env, order_user, order_info));// 自动执行域名代理
         if (order_info['flag'] == 2) result.push(await opDomain(env, order_user, order_info, []));// 自动验证域名
@@ -36,16 +39,17 @@ export async function Processing(env: Bindings) {
 export async function newApply(env: Bindings, order_user: any, order_info: any) {
     // 获取申请域名信息 =============================================================================
     let client_data: any = await getStart(env, order_user, order_info); // 获取域名证书的申请操作接口
+    if (client_data == null) return {"texts": "处理失败，详见日志输出"};
     let domain_list: any = await getNames(order_info, true) // 获取当前申请域名的详细信息和类型
     // console.log("domain_list: ", domain_list);
     try {
         let orders_data: any = JSON.stringify(await client_data.createOrder({identifiers: domain_list}));
         // 写入订单详细数据 =============================================================================
         const timestamp = new Date(new Date().setDate(new Date().getDate() + 7)).getTime();
-        await saves.updateDB(env.DB, "Apply", {flag: 1}, {uuid: order_info['uuid']}) // 更改状态码
-        await saves.updateDB(env.DB, "Apply", {next: timestamp}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {text: "订单创建成功"}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {data: orders_data}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {flag: 1}, {uuid: order_info['uuid']}) // 更改状态码
+        await saves.updateDB(env.DB_CF, "Apply", {next: timestamp}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "订单创建成功"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {data: orders_data}, {uuid: order_info['uuid']})
     } catch (e) {
         console.error(e);
         return {"texts": e};
@@ -100,9 +104,9 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
         domain_save.push(domain_item);
     }
     if (domain_text.length == 0) domain_text = "域名处理成功"
-    await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {text: domain_text}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB_CF, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB_CF, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB_CF, "Apply", {text: domain_text}, {uuid: order_info['uuid']})
     console.log(domain_save);
     return {"texts": domain_text};
 }
@@ -127,9 +131,9 @@ export async function opDomain(env: Bindings, order_user: any, order_info: any, 
         domain_save.push(domain_item);
     }
     if (sets_list.length !== 0) {
-        await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {text: "订单域名验证状态修改成功"}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "订单域名验证状态修改成功"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
     }
     return {"texts": "处理成功"};
 }
@@ -178,13 +182,13 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
     }
     orders_data = await client_data.getOrder(orders_text);
     console.log(orders_data);
-    await saves.updateDB(env.DB, "Apply", {data: JSON.stringify(orders_data)}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
-    await saves.updateDB(env.DB, "Apply", {flag: status_flag}, {uuid: order_info['uuid']})
-    if (status_flag == -1) await saves.updateDB(env.DB, "Apply", {
+    await saves.updateDB(env.DB_CF, "Apply", {data: JSON.stringify(orders_data)}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB_CF, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
+    await saves.updateDB(env.DB_CF, "Apply", {flag: status_flag}, {uuid: order_info['uuid']})
+    if (status_flag == -1) await saves.updateDB(env.DB_CF, "Apply", {
         text: "域名验证失败:" + JSON.stringify(domain_fail)
     }, {uuid: order_info['uuid']})
-    else await saves.updateDB(env.DB, "Apply", {text: "域名验证通过"}, {uuid: order_info['uuid']})
+    else await saves.updateDB(env.DB_CF, "Apply", {text: "域名验证通过"}, {uuid: order_info['uuid']})
     return {"texts": "处理成功"};
 }
 
@@ -205,23 +209,23 @@ export async function getCerts(env: Bindings, order_user: any, order_info: any) 
             altNames: domainsListCSR, commonName: domainsListCSR[0], country: order_info['C'], state: order_info['S'],
             locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU']
         }, privateKeyText);
-        await saves.updateDB(env.DB, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
         const finish_text: any = await client_data.finalizeOrder(orders_data, certificateCSR);// 最终确认订单
         console.log('Orders Remote Finish Status:', finish_text);
-        await saves.updateDB(env.DB, "Apply", {text: "证书签发请求提交成功"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "证书签发请求提交成功"}, {uuid: order_info['uuid']})
     }
     if (orders_data.status === 'processing') {
         console.log('Orders Remote Finish Status:', "Certificate Processing");
-        await saves.updateDB(env.DB, "Apply", {text: "证书正在等待完成签发"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "证书正在等待完成签发"}, {uuid: order_info['uuid']})
     }
     if (orders_data.status === 'valid') {
         const certificate: any = await client_data.getCertificate(orders_data);// 获取证书
         // console.log('Orders Remote Issues Status:', certificate);
-        await saves.updateDB(env.DB, "Apply", {cert: certificate}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {flag: 5}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {cert: certificate}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {flag: 5}, {uuid: order_info['uuid']})
         const timestamp = new Date(new Date().setDate(new Date().getDate() + 90)).getTime();
-        await saves.updateDB(env.DB, "Apply", {next: timestamp}, {uuid: order_info['uuid']})
-        await saves.updateDB(env.DB, "Apply", {text: "恭喜！证书已成功签发"}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {next: timestamp}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "恭喜！证书已成功签发"}, {uuid: order_info['uuid']})
         // await saves.updateDB(env.DB, "Apply", {data: ""}, {uuid: order_info['uuid']})
     }
     return {"texts": "处理成功"};
@@ -252,21 +256,39 @@ async function getNames(order_info: any, full: boolean = false) {
 
 // 获取操作接口 ####################################################################################
 async function getStart(env: Bindings, order_user: any, order_info: any) {
+    let acme_url = acme_url_map[order_info['sign']];
+    const acme_key_map: Record<string, any> = {
+        "lets-encrypt": order_user['keys'],
+        "google-trust": env.GTS_KeyTS,
+        "bypass-trust": order_user['keys'],
+        "zeroca-trust": env.ZRO_KeyTS,
+        "sslcom-trust": env.SSL_KeyTS,
+    }
+    const acme_eab_map: Record<string, any> = {
+        "lets-encrypt": undefined,
+        "google-trust": {kid: env.GTS_keyID, hmacKey: env.GTS_keyMC,},
+        "bypass-trust": undefined,
+        "zeroca-trust": {kid: env.ZRO_keyID, hmacKey: env.ZRO_keyMC,},
+        "sslcom-trust": {kid: env.SSL_keyID, hmacKey: env.SSL_keyMC,}
+    }
+    if (order_info['sign'] == "sslcom-trust") acme_url += order_info['type'].substring(0, 3);
     let client_data: Client = new acme.Client({
-        directoryUrl: ssl[order_info['sign']],
-        accountKey: order_info.sign === "google-trust" ? env.GTS_KeyTS : order_user['keys'],
-        externalAccountBinding: order_info.sign === "google-trust" ? {
-            kid: env.GTS_keyID,
-            hmacKey: env.GTS_keyMC,
-        } : undefined,
+        directoryUrl: acme_url,
+        accountKey: acme_key_map[order_info.sign],
+        externalAccountBinding: acme_eab_map[order_info.sign],
     });
     try { // 获取账户信息 ================================
         client_data.getAccountUrl();
     } catch (e) { // 尝试创建账户 ========================
-        await client_data.createAccount({
-            termsOfServiceAgreed: true,
-            contact: ['mailto:' + order_user['mail']],
-        });
+        try {
+            await client_data.createAccount({
+                termsOfServiceAgreed: true,
+                contact: ['mailto:' + order_user['mail']],
+            });
+        } catch (e) {
+            console.error(e);
+            return null
+        }
     }
     return client_data;
 }

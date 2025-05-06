@@ -15,12 +15,14 @@ function getUserEmail() {
             return response.texts;
         } else {
             console.log('用户邮箱获取失败:', response.texts);
-            window.alert("用户邮箱获取失败: " + response.texts);
+            window.location.href = "/login.html";
+            // window.alert("用户邮箱获取失败: " + response.texts);
             return {};
         }
     } else {
         console.error('用户邮箱获取失败:', xhr.status);
-        window.alert("用户邮箱获取失败: " + xhr.status);
+        window.location.href = "/login.html";
+        // window.alert("用户邮箱获取失败: " + xhr.status);
         return {};
     }
 }

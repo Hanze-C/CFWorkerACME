@@ -26,7 +26,7 @@ export async function getNonce(c: Context, lens: number = 8) {
         return await addUsers(c, email) // 新增真用户
     }
     if (Object.keys(user_db).length > 0) {
-        await saves.updateDB(c.env.DB, "Users",
+        await saves.updateDB(c.env.DB_CF, "Users",
             {code: nonce,},
             {mail: email,});
     }
@@ -52,18 +52,18 @@ export async function newNonce(lens: number = 8): Promise<string> {
 // 获取用户 ###############################################################################
 export async function getUsers(c: Context, email: string) {
     // console.log(email);
-    return await saves.selectDB(c.env.DB, "Users", {mail: {value: email}});
+    return await saves.selectDB(c.env.DB_CF, "Users", {mail: {value: email}});
 }
 
 // 删除用户 ###############################################################################
 export async function delUsers(c: Context, email: string) {
-    return await saves.deleteDB(c.env.DB, "Users", {mail: {value: email},});
+    return await saves.deleteDB(c.env.DB_CF, "Users", {mail: {value: email},});
 }
 
 // 新增用户 ###############################################################################
 export async function addUsers(c: Context, email: string) {
     const nonce = await newNonce(8);
-    await saves.insertDB(c.env.DB, "Users", {
+    await saves.insertDB(c.env.DB_CF, "Users", {
         mail: email,
         code: nonce,
         time: Date.now(),
@@ -117,7 +117,7 @@ export async function userRegs(c: Context) {
             const {publicKey, privateKey} = generateKeyPairSync(
                 'ec', {namedCurve: 'prime256v1'});
             console.log(publicKey);
-            await saves.updateDB(c.env.DB, "Users",
+            await saves.updateDB(c.env.DB_CF, "Users",
                 {
                     code: "",
                     flag: "1",
@@ -154,7 +154,7 @@ export async function userPost(c: Context) {
     local.deleteCookie(c, 'users')
     local.setCookie(c, 'mail', mail_data_in);
     await local.setSignedCookie(c, 'auth', pass_hmac_in, user_data_in['pass']);
-    await saves.updateDB(c.env.DB, "Users",
+    await saves.updateDB(c.env.DB_CF, "Users",
         {code: "",},
         {mail: mail_data_in,}
     );
@@ -177,7 +177,8 @@ export async function userAuth(c: Context) {
 
 // 用户退出 ###############################################################################
 export async function userExit(c: Context) {
-    local.deleteCookie(c, 'users')
+    local.deleteCookie(c, 'mail')
+    local.deleteCookie(c, 'auth')
     return c.redirect("/login.html", 302);
 }
 

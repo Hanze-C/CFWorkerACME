@@ -278,15 +278,7 @@
     }
 
 
-    function saveFile(data, fileName = 'download') {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([data]));
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-    }
+
 
     // 页面加载 ########################################################################################################
     function onLoader() {

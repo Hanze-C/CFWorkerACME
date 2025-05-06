@@ -8,21 +8,23 @@
                     <div class="d-flex align-items-center flex-grow-1">
                         <label class="nowrap me-2">证书域名：</label>
                         <input type="text" name="domains[${domainNum}][domain]"
-                               class="form-control" style="min-width:180px"
+                               class="form-control" style="min-width:335px"
                                placeholder="域名（如：example.com）" required>
                     </div>
 
                     <div class="d-flex align-items-center">
                         <label class="nowrap me-2">通配符</label>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="wildcard-${domainNum}" name="domains[${domainNum}][wildcard]">
+                            <input class="form-check-input" type="checkbox" 
+                            id="wildcard-${domainNum}" name="domains[${domainNum}][wildcard]">
                         </div>
                     </div>
 
                     <div class="d-flex align-items-center">
                         <label class="nowrap me-2">包含根</label>
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="include_root-${domainNum}" name="domains[${domainNum}][include_root]">
+                            <input class="form-check-input" type="checkbox" disabled="disabled"
+                            id="include_root-${domainNum}" name="domains[${domainNum}][include_root]">
                         </div>
                     </div>
 
@@ -42,17 +44,18 @@
                     </div>
                 </div>
             `;
-        /*
-                            <div class="d-flex align-items-center">
-                                <label class="nowrap me-2">账号：</label>
-                                <select name="domains[${domainCount}][verification]" class="form-select" style="min-width: 100px">
-                                    <option value="账号1">账号1</option>
-                                </select>
-                            </div>
-        * */
-        domainContainer.appendChild(newDomainRow);
-        domainNum++;
 
+        // 默认禁用包含根的选项
+        // 添加监听器，当通配符选项状态改变时，更新包含根选项的状态
+
+        domainContainer.appendChild(newDomainRow);
+        // 获取通配符和包含根的元素
+        const wildcardCheckbox = document.getElementById(`wildcard-${domainNum}`);
+        const includeRootCheckbox = document.getElementById(`include_root-${domainNum}`);
+        wildcardCheckbox.addEventListener('change', function() {
+            includeRootCheckbox.disabled = !this.checked;
+        });
+        domainNum++;
         // 为新删除按钮绑定事件
         newDomainRow.querySelector('.delete-btn').addEventListener('click', function () {
             this.closest('.domain-row').remove();

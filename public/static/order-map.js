@@ -4,6 +4,8 @@ const sign_map = {
     "lets-encrypt": "Let's Encrypt Global",
     "google-trust": "Google Trust Service",
     "bypass-trust": "Bypass Trust Service",
+    "zeroca-trust": "ZeroSSL Free Service",
+    "sslcom-trust": "SSL.com Free Service",
 }
 const type_map = {
     "rsa2048": "RSA 2048",
@@ -46,10 +48,21 @@ const auth_act = {
     "ca_del": "吊销证书",
 }
 
+function saveFile(data, fileName = 'download') {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([data]));
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+}
+
 // 提交域名状态 ####################################################################################################
-function setAuthy(on_actions, element = undefined) {
+function setAuthy(on_actions, element = undefined, id = undefined) {
     const xhr = new XMLHttpRequest();
-    const order_uuid = urlParams.get('id');
+    let order_uuid = urlParams.get('id');
+    if (id !== undefined) order_uuid = id;
     let url = '/order/?id=' + order_uuid + "&op=" + on_actions;
     if (element !== undefined) url += `&cd=${element.dataset.domain}`;
     xhr.open('GET', url, false); // 第三个参数设置为 false 表示同步请求
@@ -64,7 +77,7 @@ function setAuthy(on_actions, element = undefined) {
                 saveFile(response.order, order_uuid + '.pem');
             else if (on_actions === "cancel")
                 window.location.href = '/apply.html';
-            else{
+            else {
                 Swal.fire({
                     position: 'top',
                     icon: 'success',

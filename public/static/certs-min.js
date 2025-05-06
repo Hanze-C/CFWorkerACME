@@ -18,12 +18,14 @@ function getOrders() {
             };
         } else {
             console.log('证书订单获取失败:', response.texts);
-            window.alert("证书订单获取失败: " + response.texts);
+            // window.alert("证书订单获取失败: " + response.texts);
+            window.location.href = "/login.html";
             return {};
         }
     } else {
         console.error('证书订单获取失败:', xhr.status);
-        window.alert("证书订单获取失败: " + xhr.status);
+        // window.alert("证书订单获取失败: " + xhr.status);
+        window.location.href = "/login.html";
         return {};
     }
 }
@@ -114,7 +116,7 @@ function numApply() {
 
         msg_list.innerHTML += `
         <tr>
-            <td>${order.uuid}</td>
+            <td id="${order.uuid}">${order.uuid}</td>
             <td>${flag_map[order.flag]}</td>
             <td>${c_name}</td>
             <td>${sign_map[order.sign]}</td>
@@ -125,9 +127,9 @@ function numApply() {
             <td>
                 <button class="btn btn-primary" onclick="window.open('/order.html?id=${order.uuid}')">查看详情</button>
                 <button class="btn ${order.flag === 5 ? 'btn-info' : 'btn-secondary'}" 
-                    ${order.flag === 5 ? 'btn-success' : "disabled"} onclick="setAuthy('ca_get')">下载证书</button>
+                    ${order.flag === 5 ? 'btn-success' : "disabled"} onclick="setAuthy('ca_get',undefined,'${order.uuid}')">下载证书</button>
                 <button class="btn ${order.flag === 5 ? 'btn-info' : 'btn-secondary'}" 
-                    ${order.flag === 5 ? 'btn-success' : "disabled"} onclick="setAuthy('ca_key')">下载密钥</button>
+                    ${order.flag === 5 ? 'btn-success' : "disabled"} onclick="setAuthy('ca_key',undefined,'${order.uuid}')">下载密钥</button>
             </td>
         </tr>
         `;
