@@ -8,17 +8,37 @@
 
 ## 项目介绍
 
-SSL证书助手是一个免费、开源的全自动化SSL证书申请和下发平台，依托于Cloudflare运行，本平台通过自动化CNAME和DNS操作，全自动验证域名DNS申请SSL证书，并自动下发到服务器，本项目优势：
+SSL证书助手是一个免费、开源的全自动化SSL证书申请和下发平台，依托于Cloudflare运行
+
+本平台通过自动化CNAME和DNS操作，全自动验证域名DNS申请SSL证书，并自动下发到服务器，本项目优势：
 
 1. 不依赖服务器即可部署，支持私有化部署，依托于CloudFlare Worker，**完全免费**
 2. 支持手动验证和自动化验证（DCV代理），**只需设置一次CNAME记录一直可以使用**
 3. 支持`Let's Encrypt`、`ZeroSSL`、`Google Trust Service`、`SSL.com`等证书提供商
 
+### 需求背景
+
+- 有`acme.sh`了，为什么还需要`SSL证书助手`？
+
+  > 1、`acme.sh`脚本主要是给单机证书申请使用的，本平台是为了解决多服务器共用或者内网申请SSL证书的，可以通过网页或者API同步证书
+  >
+  > 2、`acme.sh`使用`TXT`验证或者申请通配符证书的时候，需要使用API Key或者手动设置，前者不够安全，后者麻烦，而`SSL证书助手`只需要设置一次CNAME记录即可永久使用
+  >
+  > 3、`acme.sh`并不是人人都熟悉，如果你比较喜欢`acme.sh`并且没有上面的需求，直接使用`acme.sh`就好了
+
+- 这个和`宝塔`或者`1Panel ` SSL证书申请有什么区别？
+
+  > 没什么区别，只是把申请验证过程移到了服务端，方便DCV代理和同步
+
+- 这个平台安全可靠吗
+
+  > 演示平台不会主动泄漏您的密钥或数据，但我认为安全性不如acme高
+  >
+  > 不过你可以使用自己的Cloudflare账号部署一个私有的实例，完全免费的
+
 ### 演示地址
 
 - https://newssl.524228.xyz/
-
-## 网页展示
 
 <img src="img/QQ20250506-153642.png" alt="QQ20250506-153642" style="zoom:50%;" />
 
@@ -118,3 +138,50 @@ npm run dev
 ```shell
 npm run deploy
 ```
+
+## 备注说明
+
+1. `Let's Encrypt`在CloudFlare Worker上会抛出SSL连接失败问题，导致525错误，我们设置了一个代理到此供应商`https://encrys.524228.xyz/directory`，你可以使用nginx+下列参数代理：
+
+   ```nginx
+   location ^~ /directory
+   {
+       proxy_pass https://acme-v02.api.letsencrypt.org/directory;
+       sub_filter acme-v02.api.letsencrypt.org encrys.524228.xyz;
+       sub_filter_types *;
+       sub_filter_once off;
+       proxy_set_header Host acme-v02.api.letsencrypt.org;
+       proxy_set_header Accept-Encoding "";
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header REMOTE-HOST $remote_addr;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+       proxy_http_version 1.1;
+       proxy_hide_header Upgrade;
+       add_header X-Cache $upstream_cache_status;
+       add_header Cache-Control no-cache;
+   }
+   location /acme/ {
+       proxy_pass https://acme-v02.api.letsencrypt.org/acme/;
+       proxy_set_header Host $Host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header REMOTE-HOST $remote_addr;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+       proxy_http_version 1.1;
+       proxy_hide_header Upgrade;
+       add_header X-Cache $upstream_cache_status;
+       add_header Cache-Control no-cache;
+   }
+   
+   ```
+
+   
+
+## 引用链接
+
+> - [acmesh-official/acme.sh: A pure Unix shell script implementing ACME client protocol](https://github.com/acmesh-official/acme.sh)
+> - [publishlab/node-acme-client: Simple and unopinionated ACME client for Node.js](https://github.com/publishlab/node-acme-client)
+
