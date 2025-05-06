@@ -17,8 +17,15 @@
     "GTS_useIt": "",
     "GTS_keyMC": "",
     "GTS_keyID": "",
-    "GTS_KeyTS": ""
-
+    "GTS_KeyTS": "",
+    "SSL_useIt": "true",
+    "SSL_keyMC": "",
+    "SSL_keyID": "",
+    "SSL_KeyTS": "",
+    "ZRO_useIt": "true",
+    "ZRO_keyMC": "",
+    "ZRO_keyID": "",
+    "ZRO_KeyTS": ""
   },
   "site": {
     "bucket": "./public"
