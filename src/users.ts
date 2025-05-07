@@ -11,26 +11,49 @@ export async function getNonce(c: Context, lens: number = 8) {
     const email = <string>c.req.query('email');
     const setup = <string>c.req.query('setup');
     let user_db: Record<string, any> = await getUsers(c, email);
-    const nonce = await newNonce(lens);
+    const nonce: string = await newNonce(lens);
     // 注册新用户 ========================================================================
     if (setup != undefined && setup.length > 0 &&
         (setup == "1" || setup == "true")) {
+        if (!await Turnstile(c)) return c.json({"nonce": "请先完成验证"}, 403);
         if (Object.keys(user_db).length > 0) {
             let diff: number = Date.now() - user_db[0]["time"]
             let vars: number = Math.floor((300000 - diff) / 60000 + 1)
             if (user_db[0]["flag"] <= 0) {
                 if (diff >= 300000) await delUsers(c, email)
-                else return {"nonce": "操作过于频繁，请等" + vars + "分钟后再试"}
-            } else return {"nonce": "此邮箱已经注册，请直接登录，如忘记密码请重置"}
+                else return c.json(
+                    {"nonce": "操作过于频繁\n请等" + vars + "分钟后再试"}, 403)
+            } else return c.json(
+                {"nonce": "此邮箱已经被注册\n请直接登录\n如忘记密码请重置"}, 400)
         }
-        return await addUsers(c, email) // 新增真用户
+        return c.json(await addUsers(c, email)) // 新增真用户
     }
     if (Object.keys(user_db).length > 0) {
         await saves.updateDB(c.env.DB_CF, "Users",
             {code: nonce,},
             {mail: email,});
     }
-    return {"nonce": nonce};
+    return c.json({"nonce": nonce}, 200);
+}
+
+// 校验验证 ###############################################################################
+export async function Turnstile(c: Context) {
+    const authy = <string>c.req.query('authy');
+    const SECRET_KEY = c.env.AUTH_KEYS;
+    const ip = c.req.header("CF-Connecting-IP");
+    let formData = new FormData();
+    formData.append("secret", SECRET_KEY);
+    formData.append("response", authy);
+    formData.append("remoteip", ip);
+
+    const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+    const result = await fetch(url, {
+        body: formData,
+        method: "POST",
+    });
+    const outcome: Record<string, any> = await result.json();
+    return outcome.success;
+
 }
 
 // 生成种子 ###############################################################################
@@ -144,7 +167,8 @@ export async function userRegs(c: Context) {
 export async function userPost(c: Context) {
     let pass_hmac_in: string = <string>c.req.query('token');
     let mail_data_in: string = <string>c.req.query('email');
-    let user_data_db: Record<string, any>[]  = await getUsers(c, mail_data_in);
+    if (!await Turnstile(c)) return c.json({"nonce": "请先完成验证"}, 403);
+    let user_data_db: Record<string, any>[] = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0) return c.json({flags: 0}, 401);
     let user_data_in = user_data_db[0]
     const pass_hmac_db = await hmacSHA2(user_data_in['pass'], user_data_in['code']);
@@ -166,7 +190,7 @@ export async function userAuth(c: Context) {
     const user_mail = local.getCookie(c, 'mail')
     // console.log(user_mail);
     if (!user_mail || user_mail.length <= 0) return false;
-    const user_data: Record<string, any>  = (await getUsers(c, user_mail))[0];
+    const user_data: Record<string, any> = (await getUsers(c, user_mail))[0];
     if (Object.keys(user_data).length <= 2) return false;
     // console.log(user_data);
     const user_auth = await local.getSignedCookie(

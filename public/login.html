@@ -5,53 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SSL证书助手 - 用户登录</title>
     <link href="static/style-all.css" rel="stylesheet"/>
+    <link href="static/bootstrap.css" rel="stylesheet">
     <script src="static/crypt-min.js"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
 </head>
 <body>
 <div class="container">
     <div class="form-container">
-        <h1 id="main_text">SSL证书助手 - 登录</h1>
+        <h1 id="main_title">SSL证书助手</h1>
+        <h2 id="main_text" style="text-align: center">用户登录</h2>
         <form action="" method="post" enctype="multipart/form-data">
             <div class="input-row">
                 <div class="input-group" id="mail_text">
-                    <label>
+                    <label style="width: 100%;">
                         <input id="mail_data" type="text" name="mail" placeholder="登录邮箱" required>
-                    </label>
-                </div>
-            </div>
-
-            <div class="input-row" id="send_code">
-                <div class="input-group">
-                    <label style="display: flex;gap: 10px;">
-                        <input id="code_data" type="text" name="code" placeholder="验证代码" style="width: 70%"
-                               required>
-                        <button type="button" class="RoyalBlue-btn" style="flex-grow: 1" onclick="onCode()">发送
-                        </button>
                     </label>
                 </div>
             </div>
             <div class="input-row" id="pass_text">
                 <div class="input-group">
-                    <label>
+                    <label style="width: 100%;">
                         <input id="pass_data" type="password" name="pass" placeholder="登录密码" required>
                     </label>
                 </div>
             </div>
             <div class="input-row" id="pass_next">
                 <div class="input-group">
-                    <label>
+                    <label style="width: 100%;">
                         <input id="next_data" type="password" name="pass" placeholder="确认密码" required>
                     </label>
                 </div>
             </div>
+            <div class="input-row" style="border: 10px solid #ffffff;border-radius: 5px">
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAABa7S19lK0Kn_TWK" id="Captcha" data-size="flexible"
+                     data-callback="CaptchaSuccess" data-expired-callback="CaptchaExpired"
+                     data-refresh-expired="auto" data-refresh-timeout="auto" style="width: 100%;height: 64px; "></div>
+            </div>
+            <div class="input-row" id="send_code">
+                <div class="input-group">
+                    <label style="display: flex;gap: 10px;width: 100%;">
+                        <input id="code_data" type="text" name="code" placeholder="验证代码" style="width: 70%"
+                               required>
+                        <button type="button" class="btn btn-secondary" id="code"
+                                style="flex-grow: 1;margin: 0;padding: 0" onclick="onCode()">发送
+                        </button>
+                    </label>
+                </div>
+            </div>
             <div id="login_btn" class="buttons">
-                <button type="button" class="LimeGreen-btn" onclick="onPost()">登录</button>
-                <button type="button" class="RoyalBlue-btn" onclick="location.href='/login.html?register=1';">注册
+                <button style="width: 50%;" type="button" class="btn btn-success" onclick="onPost()">登录</button>
+                <button style="width: 50%;" type="button" class="btn btn-info"
+                        onclick="location.href='/login.html?register=1';">注册
                 </button>
             </div>
             <div id="apply_btn" class="buttons">
-                <button type="button" class="LimeGreen-btn" onclick="onAdds()">注册</button>
-                <button type="button" class="DimGray01-btn" onclick="location.href='/login.html';">返回</button>
+                <button style="width: 50%;" type="button" class="btn btn-success" onclick="onAdds()">注册</button>
+                <button style="width: 50%;" type="button" class="btn btn-info" onclick="location.href='/login.html';">
+                    登录
+                </button>
             </div>
         </form>
     </div>
@@ -61,6 +73,8 @@
     // 准备加密组件 =======================================
     // import CryptoJS from 'crypto-js';
     let nonce = "";
+    let token = "";
+    let widgetId = "";
 
     // 页面载入函数 #######################################
     function onLoad(name) {
@@ -76,8 +90,14 @@
         } else {
             document.getElementById('login_btn').remove();
             let bu = document.getElementById('main_text');
-            bu.innerText = "SSL证书助手 - 注册"
+            bu.innerText = "用户注册"
         }
+        // widgetId = turnstile.render("#Captcha", {
+        //     sitekey: "0x4AAAAAABa7S19lK0Kn_TWK",
+        //     callback: function(token) {
+        //         console.log(`Challenge Success: ${token}`);
+        //     }
+        // });
     }
 
     async function onCode() {
@@ -85,26 +105,64 @@
         const urlParams = new URLSearchParams(queryString);
         // 使用URLSearchParams解析查询字符串 ======================
         let mail_data = document.getElementById("mail_data").value;
-        let post_urls = "/nonce/?email=" + mail_data
-        if (urlParams.has('register')) post_urls += "&setup=1"
+        let url = "/nonce/?email=" + mail_data;
+        if (urlParams.has('register')) url += "&authy=" + token
+        if (urlParams.has('register')) url += "&setup=1"
         // 检查邮箱 ===============================================
         if (!isValidEmail(mail_data)) return false;
         // 获取代码 ===============================================
         try {
-            const response = await fetch(post_urls, {
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {'Content-Type': 'application/json',}
             }); // 检查请求是否成功 -------------------------------
-            if (!response.ok) window.alert(response.message);
-            // 解析响应内容 =======================================
+            turnstile.reset();
             const responseData = await response.json();
-            if (urlParams.has('register'))
-                window.alert(responseData["nonce"]);
-            else nonce = responseData["nonce"];
-            return responseData;
+            if (!response.ok) {
+                Swal.fire({
+                    icon: 'error',
+                    title: responseData["nonce"],
+                    showConfirmButton: true,
+                    timer: 1000
+                });
+            } else {
+                if (urlParams.has('register')) {
+                    startCountdown();
+                    let btn = document.getElementById("code")
+                    btn.className = "btn btn-secondary";
+                    Swal.fire({
+                        icon: 'success',
+                        title: responseData["nonce"],
+                        showConfirmButton: true,
+                        timer: 1000
+                    });
+                } else
+                    nonce = responseData["nonce"];
+                return responseData;
+            }
+            // 解析响应内容 =======================================
         } catch (error) {
-            window.alert('获取失败: ' + error);
+            Swal.fire({
+                icon: 'error',
+                title: '获取Nonce失败: ' + error,
+                showConfirmButton: true,
+                timer: 1000
+            });
         }
+    }
+
+    function startCountdown() {
+        let countdown = 300;
+        document.getElementById("code").disabled = true;
+        document.getElementById("code").innerText = countdown.toString();
+        const timer = setInterval(() => {
+            countdown--;
+            if (countdown <= 0) {
+                clearInterval(timer);
+                document.getElementById("code").disabled = false;
+                document.getElementById("code").innerText = "发送";
+            }
+        }, 1000);
     }
 
     // 提交表单函数 #######################################################
@@ -117,22 +175,30 @@
         await onCode();
         let pass_hash = await sha256(pass_data); // 登录密码的SHA256
         let pass_hmac = await mac256(pass_hash, nonce);
-        console.log(pass_hash,nonce, pass_hmac);
+        console.log(pass_hash, nonce, pass_hmac);
         // 发起请求 =======================================================
         let new_url = "/login/?email=" + mail_data + "&token=" + pass_hmac;
         try {
-            const response = await fetch(new_url, {
-                method: 'GET',
-                headers: {'Content-Type': 'application/json',}
-            }); // 检查请求是否成功 -------------------------------
-            // 解析响应内容 =======================================
+            const response = await fetch(new_url + "&authy=" + token, {
+                method: 'GET', headers: {'Content-Type': 'application/json'}
+            }); // 检查请求是否成功 ---------------------------------------
+            // 解析响应内容 ===============================================
             const responseData = await response.json();
-            if(response.status === 200)
+            if (response.status === 200)
                 window.location.href = "/panel.html";
-                // window.location.href = "/apply.html";
-            else window.alert('登陆失败: 用户名或密码错误');
+            else Swal.fire({
+                icon: 'error',
+                title: "登陆失败: 用户名或密码错误",
+                showConfirmButton: true,
+                timer: 1000
+            });
         } catch (error) {
-            window.alert('获取失败: ' + error);
+            Swal.fire({
+                icon: 'error',
+                title: '提交登录失败: ' + error,
+                showConfirmButton: true,
+                timer: 1000
+            });
         }
     }
 
@@ -144,8 +210,23 @@
         let next_data = document.getElementById("next_data").value;
         // 判断密码是否一致 =======================================
         if (!isValidEmail(mail_data)) return false;
+        console.log(pass_data, next_data)
         if (next_data !== pass_data) {
-            window.alert("两次密码不一致");
+            Swal.fire({
+                icon: 'error',
+                title: '两次密码不一致',
+                showConfirmButton: true,
+                timer: 1000
+            });
+            return false;
+        }
+        if (pass_data.length < 8) {
+            Swal.fire({
+                icon: 'error',
+                title: '密码至少要8位',
+                showConfirmButton: true,
+                timer: 1000
+            });
             return false;
         }
         // 加密内容 ================================================
@@ -223,15 +304,45 @@
 
     function isValidEmail(email) {
         if (email.length <= 0) {
-            window.alert("请填写邮箱地址");
+            Swal.fire({
+                icon: 'error',
+                title: '请填写邮箱地址',
+                showConfirmButton: false,
+                timer: 1000
+            });
             return false;
         }
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const result = regex.test(email);
         if (!result) {
-            window.alert("请正确填写邮箱");
+            Swal.fire({
+                icon: 'error',
+                title: '请正确填写邮箱',
+                showConfirmButton: false,
+                timer: 1000
+            });
+            return false;
+        }
+        if (token.length <= 0) {
+            Swal.fire({
+                icon: 'error',
+                title: '请先完成人机验证',
+                showConfirmButton: false,
+                timer: 1000
+            });
+            return false;
         }
         return result
+    }
+
+    function CaptchaSuccess(e) {
+        token = e;
+        document.getElementById("code").className = "btn btn-primary";
+    }
+
+    function CaptchaExpired(e) {
+        document.getElementById("code").className = "btn btn-secondary";
+        turnstile.reset();
     }
 
     // 页面加载逻辑 ##################################################

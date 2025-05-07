@@ -13,7 +13,7 @@ import {opDomain} from "./certs";
 
 // 绑定数据 ###############################################################################
 export type Bindings = {
-    DB_CF: D1Database, MAIL_KEYS: string, MAIL_SEND: string, SIGN_AUTH: string,
+    DB_CF: D1Database, MAIL_KEYS: string, MAIL_SEND: string, AUTH_KEYS: string,
     DCV_AGENT: string, DCV_EMAIL: string, DCV_TOKEN: string, DCV_ZONES: string,
     GTS_keyMC: string, GTS_keyID: string, GTS_KeyTS: string, GTS_useIt: string,
     SSL_keyMC: string, SSL_keyID: string, SSL_KeyTS: string, SSL_useIt: string,
@@ -29,7 +29,7 @@ app.get('/users', async (c) => {
 
 // 获取种子 ###############################################################################
 app.get('/nonce/', async (c) => {
-    return c.json(await users.getNonce(c));
+    return await users.getNonce(c);
 });
 
 // 核查状态 ###############################################################################

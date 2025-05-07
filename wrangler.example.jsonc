@@ -9,7 +9,7 @@
   "vars": {
     "MAIL_KEYS": "",
     "MAIL_SEND": "noreply@example.com",
-    "SIGN_AUTH": "",
+    "AUTH_KEYS": "",
     "DCV_AGENT": "",
     "DCV_EMAIL": "account@example.com",
     "DCV_TOKEN": "",
