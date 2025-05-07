@@ -3,11 +3,22 @@ function applyCert() {
     // 提取域名信息
     const domainList = [];
     const domainRows = document.querySelectorAll('.domain-row');
+    let domainFlag = true;
     domainRows.forEach((row, index) => {
         const domainInput = row.querySelector('input[name^="domains"][name$="[domain]"]');
         const wildcardInput = row.querySelector('input[name^="domains"][name$="[wildcard]"]');
         const includeRootInput = row.querySelector('input[name^="domains"][name$="[include_root]"]');
         const verificationSelect = row.querySelector('select[name^="domains"][name$="[verification]"]');
+        if (domainInput.value.length <= 0) {
+            Swal.fire({
+                icon: 'error',
+                title: '申请域名不能为空',
+                showConfirmButton: false,
+                timer: 1000
+            });
+            domainFlag = false;
+            return false;
+        }
         if (!wildcardInput.checked || includeRootInput.checked)
             domainList.push({
                 name: domainInput.value,
@@ -23,6 +34,7 @@ function applyCert() {
                 type: verificationSelect.value,
             });
     });
+    if (!domainFlag) return false;
     // 提取全局设置
     const caSelect = document.querySelector('select[name="ca"]');
     const autoRenewCheckbox = document.querySelector('input[name="auto_renew"]');
