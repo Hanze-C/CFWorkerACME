@@ -104,6 +104,18 @@ export async function userRegs(c: Context) {
     let mail_data_in: string = <string>c.req.query('email'); // 邮件明文索引用户
     let mail_code_in: string = <string>c.req.query('codes'); // 邮件+验证码 HMAC
     let pass_code_in: string = <string>c.req.query('crypt'); // 密码+验证码 AES2
+    let pass_sets_in: string = <string>c.req.query('token'); // 用户+原密码 HMAC
+    // 修改密码 ==========================================================================
+    if (pass_sets_in != undefined && pass_sets_in.length > 0) {
+        if (!await userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
+        let user_data_db: Record<string, any>[] = await getUsers(c, mail_data_in);
+        if (Object.keys(user_data_db).length <= 0) return c.json({flags: 2}, 401);
+        let user_data_in = user_data_db[0]
+        console.log(user_data_in['pass'], pass_code_in, pass_sets_in);
+        if (user_data_in['pass'] !== pass_code_in) return c.json({flags: 5}, 403);
+        await saves.updateDB(c.env.DB_CF, "Users", {pass: pass_sets_in}, {mail: mail_data_in})
+        return c.redirect("/login.html", 302);
+    }
     // 校验验证码 ========================================================================
     let user_data_db: Record<string, any>[] = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0)

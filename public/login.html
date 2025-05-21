@@ -23,6 +23,13 @@
                     </label>
                 </div>
             </div>
+            <div class="input-row" id="pass_sets">
+                <div class="input-group">
+                    <label style="width: 100%;">
+                        <input id="pass_user" type="password" name="pass" placeholder="当前密码" required>
+                    </label>
+                </div>
+            </div>
             <div class="input-row" id="pass_text">
                 <div class="input-group">
                     <label style="width: 100%;">
@@ -54,15 +61,22 @@
                 </div>
             </div>
             <div id="login_btn" class="buttons">
-                <button style="width: 50%;" type="button" class="btn btn-success" onclick="onPost()">登录</button>
-                <button style="width: 50%;" type="button" class="btn btn-info"
+                <button id="login" style="width: 50%;" type="button" class="btn btn-success" onclick="onPost()">登录
+                </button>
+                <button id="apply" style="width: 50%;" type="button" class="btn btn-info"
                         onclick="location.href='/login.html?register=1';">注册
                 </button>
             </div>
             <div id="apply_btn" class="buttons">
-                <button style="width: 50%;" type="button" class="btn btn-success" onclick="onAdds()">注册</button>
-                <button style="width: 50%;" type="button" class="btn btn-info" onclick="location.href='/login.html';">
+                <button id="apply_2" style="width: 50%;" type="button" class="btn btn-success" onclick="onAdds()">注册
+                </button>
+                <button id="login_2" style="width: 50%;" type="button" class="btn btn-info"
+                        onclick="location.href='/login.html';">
                     登录
+                </button>
+                <button id="callbacks" style="width: 50%;" type="button" class="btn btn-secondary"
+                        onclick="location.href='/panel.html';">
+                    返回
                 </button>
             </div>
         </form>
@@ -75,20 +89,33 @@
     let nonce = "";
     let token = "";
     let widgetId = "";
+    // 使用URLSearchParams解析查询字符串 ==============
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
 
     // 页面载入函数 #######################################
     function onLoad(name) {
-        const queryString = window.location.search;
-        // 使用URLSearchParams解析查询字符串 ==============
-        const urlParams = new URLSearchParams(queryString);
         // 判断是否包含tokens参数 =========================
-        if (!urlParams.has('register')) {
+        if (urlParams.has("modify")) {
+            const emails = urlParams.get("emails");
+            document.getElementById('send_code').remove();
+            document.getElementById('login_btn').remove();
+            document.getElementById('mail_data').value = emails;
+            document.getElementById('mail_data').disabled = true;
+            document.getElementById('pass_data').placeholder = "新的密码";
+            document.getElementById('apply_2').innerHTML = "修改";
+            document.getElementById('login_2').remove();
+        } else if (!urlParams.has('register')) {
             // 获取更新元素并删除 =========================
             document.getElementById('send_code').remove();
             document.getElementById('pass_next').remove();
             document.getElementById('apply_btn').remove();
+            document.getElementById('callbacks').remove();
+            document.getElementById('pass_sets').remove();
         } else {
             document.getElementById('login_btn').remove();
+            document.getElementById('pass_sets').remove();
+            document.getElementById('callbacks').remove();
             let bu = document.getElementById('main_text');
             bu.innerText = "用户注册"
         }
@@ -101,8 +128,6 @@
     }
 
     async function onCode() {
-        const queryString = window.location.search;
-        const urlParams = new URLSearchParams(queryString);
         // 使用URLSearchParams解析查询字符串 ======================
         let mail_data = document.getElementById("mail_data").value;
         let url = "/nonce/?email=" + mail_data;
@@ -178,6 +203,7 @@
         console.log(pass_hash, nonce, pass_hmac);
         // 发起请求 =======================================================
         let new_url = "/login/?email=" + mail_data + "&token=" + pass_hmac;
+
         try {
             const response = await fetch(new_url + "&authy=" + token, {
                 method: 'GET', headers: {'Content-Type': 'application/json'}
@@ -206,8 +232,8 @@
     async function onAdds(name) {
         let mail_data = document.getElementById("mail_data").value;
         let pass_data = document.getElementById("pass_data").value;
-        let code_data = document.getElementById("code_data").value;
         let next_data = document.getElementById("next_data").value;
+        let pass_last = document.getElementById("pass_user").value;
         // 判断密码是否一致 =======================================
         if (!isValidEmail(mail_data)) return false;
         console.log(pass_data, next_data)
@@ -230,21 +256,22 @@
             return false;
         }
         // 加密内容 ================================================
-        let code_hash = await sha256(code_data); // 验证代码的SHA256
         let pass_hash = await sha256(pass_data); // 登录密码的SHA256
-        let mail_code = await mac256(mail_data, code_hash) // 邮件的
-        let pass_code = await aes256(pass_hash, code_hash) // 密码的
-        // console.log("pass_data", pass_data);
-        // console.log("code_data", code_data);
-        // console.log("code_hash", code_hash);
-        // console.log("pass_hash", pass_hash);
-        // console.log("mail_code", mail_code);
-        // console.log("pass_code", pass_code);
+        let pass_code;
         // 发起请求 ================================================
-        window.location.href = "/setup/" + "?email=" + mail_data +
-            "&codes=" + mail_code + "&crypt=" + pass_code;
-        // window.open("/setup/" + "?email=" + mail_data +
-        //     "&codes=" + mail_code + "&crypt=" + pass_code);
+        let new_url = "/setup/" + "?email=" + mail_data;
+        if (urlParams.has("modify")) {
+            pass_code = await sha256(pass_last); // 老密码
+            new_url += "&token=" + pass_hash // 新密码
+        } else {
+            let code_data = document.getElementById("code_data").value;
+            let code_hash = await sha256(code_data); // 验证代码的SHA256
+            let mail_code = await mac256(mail_data, code_hash) // 邮件的
+            pass_code = await aes256(pass_hash, code_hash) // 密码的
+            new_url += "&codes=" + mail_code
+        }
+        new_url += "&crypt=" + pass_code
+        window.location.href = new_url
     }
 
     // 计算 BASE-SHA256 ============================================

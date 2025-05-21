@@ -9,6 +9,7 @@
     <script src="static/crypt-min.js"></script>
     <script src="static/panel-min.js"></script>
     <script src="static/certs-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
 </head>
 <body>
 <div class="container">
@@ -30,7 +31,6 @@
                         <h3>已签发</h3>
                         <div class="pie-chart" id="cert_done"></div>
                     </div>
-
                     <div class="chart">
                         <h3>已失效</h3>
                         <div class="pie-chart" id="cert_fail"></div>
@@ -53,6 +53,17 @@
                     </tbody>
                 </table>
             </div>
+            <div class="form-section">
+                <h2>ACME账号</h2><br/>
+                <textarea rows="5" id="acme_key" style="margin-bottom: 10px" placeholder="留空则不更改"></textarea>
+                <button type="button" class="btn btn-info" onclick="newECCP256()">随机生成</button>
+                <button type="button" class="btn btn-success" onclick="postSubmit()">应用更改</button>
+            </div>
+            <div class="form-section">
+                <h2>用户操作</h2><br/>
+                <button type="button" class="btn btn-warning" onclick="passModify()">修改密码</button>
+                <button type="button" class="btn btn-danger" onclick="delAccount()">删除账号</button>
+            </div>
         </div>
     </div>
 </div>
@@ -60,6 +71,161 @@
 <script>
     srtGravatar("panel");
     numOrders();
+
+    // 填充ACME密钥 ===========================================================================
+    async function newECCP256() {
+        try {
+            const {publicKey, privateKey} = await crypto.subtle.generateKey(
+                {name: "ECDSA", namedCurve: "P-256"}, true, ["sign", "verify"],
+            );
+            document.getElementById("acme_key").value = await encodePEM(privateKey);
+        } catch (error) {
+            console.error("生成密钥对失败:", error);
+            throw error;
+        }
+    }
+
+    // 生成ACME密钥 ===========================================================================
+    async function encodePEM(privateKey) {
+        // 将 ArrayBuffer 转换为 Base64 字符串
+        const keyBuff = await crypto.subtle.exportKey("pkcs8", privateKey);
+        const keyByte = String.fromCharCode.apply(null, new Uint8Array(keyBuff));
+        const keyBase = window.btoa(keyByte);
+        // 添加 PEM 标头和尾部，并每 64 个字符换行
+        let pem = "-----BEGIN PRIVATE KEY-----\n";
+        for (let i = 0; i < keyBase.length; i += 64) {
+            pem += keyBase.substring(i, i + 64) + "\n";
+        }
+        pem += "-----END PRIVATE KEY-----";
+
+        return pem;
+    }
+
+    // 提交ACME密钥 ===========================================================================
+    const xhr = new XMLHttpRequest();
+
+    async function postSubmit() {
+        const acme_key = document.getElementById("acme_key").value
+        if (acme_key.length <= 200) {
+            Swal.fire({
+                icon: 'error',
+                title: '请先填写或者生成新的ACME密钥',
+                showConfirmButton: false,
+                timer: 1000
+            });
+            return false;
+        }
+        const {isConfirmed} = await Swal.fire({
+            title: '确认更新密钥',
+            text: '您将无法使用之前的密钥吊销已申请的证书',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '更新密钥',
+            cancelButtonText: '取消',
+        })
+        if (!isConfirmed) return;
+        xhr.open('POST', '/acmes/', false); // 第三个参数设置为 false 表示同步请求
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        const data = {
+            privateKey: acme_key,
+            // 可以添加其他需要发送的数据
+        };
+        xhr.send(JSON.stringify(data));
+        if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.flags === 0) {
+                Swal.fire({
+                    icon: 'info',
+                    title: '更新ACME密钥成功',
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+            } else {
+                console.log('用户邮箱获取失败:',);
+                Swal.fire({
+                    icon: 'info',
+                    title: '更新ACME密钥失败\n' + response.texts,
+                    showConfirmButton: false,
+                    timer: 1000
+                });
+            }
+        } else {
+            Swal.fire({
+                icon: 'info',
+                title: '更新ACME密钥失败\n' + xhr.status,
+                showConfirmButton: false,
+                timer: 1000
+            });
+        }
+    }
+
+    // 删除当前账号 ===========================================================================
+    function delAccount() {
+        // 显示确认对话框
+        const email = document.getElementById("user-emails").innerText
+        Swal.fire({
+            title: '确认删除账号',
+            text: '此操作不可逆转，你确定要删除此账号？\n' +
+                '此账号所对应的证书订单将会被一并删除\n' +
+                '请输入你的邮箱' + email + '以确认',
+            icon: 'warning',
+            input: 'text',
+            inputLabel: '输入你的邮箱进行确认',
+            inputPlaceholder: '请输入你的邮箱',
+            showCancelButton: true,
+            confirmButtonText: '删除账号',
+            cancelButtonText: '取消',
+            inputValidator: (value) => {
+                if (!value) {
+                    return '请输入您的邮箱';
+                }
+                if (value !== email) {
+                    return '请输入正确邮箱';
+                }
+                return null;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const email = result.value;
+                xhr.open('POST', '/erase/', false); // 第三个参数设置为 false 表示同步请求
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                const data = {email: email};
+                xhr.send(JSON.stringify(data));
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.flags === 0) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: '删除账号成功',
+                            showConfirmButton: false,
+                            timer: 1000
+                        });
+                        window.location.href = "/index.html";
+                    } else {
+                        Swal.fire({
+                            icon: 'info',
+                            title: '删除账号失败\n' + response.texts,
+                            showConfirmButton: false,
+                            timer: 1000
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: '删除账号失败\n' + xhr.status,
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                }
+            }
+        });
+    }
+
+    // 修改用户密码 ===========================================================================
+    function passModify() {
+        const email = document.getElementById("user-emails").innerText
+        window.location.href = "/login.html?modify=1&emails="+email;
+    }
 </script>
 </body>
 </html>
