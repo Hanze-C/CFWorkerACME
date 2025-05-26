@@ -54,20 +54,41 @@
                 </table>
             </div>
             <div class="form-section">
-                <h2>ACME账号</h2><br/>
-                <textarea rows="5" id="acme_key" style="margin-bottom: 10px" placeholder="留空则不更改"></textarea>
-                <button type="button" class="btn btn-info" onclick="newECCP256()">随机生成</button>
-                <button type="button" class="btn btn-success" onclick="postSubmit()">应用更改</button>
+                <h2 onclick="toggleSection('acme-section')" style="cursor: pointer;">ACME账号 <span id="acme-arrow">▼</span></h2>
+                <div id="acme-section" style="display: none">
+                    <br/>
+                    <textarea rows="5" id="acme_key" style="margin-bottom: 10px" placeholder="留空则不更改"></textarea>
+                    <button type="button" class="btn btn-info" onclick="newECCP256()">随机生成</button>
+                    <button type="button" class="btn btn-success" onclick="postSubmit()">应用更改</button>
+                </div>
             </div>
+
             <div class="form-section">
-                <h2>用户操作</h2><br/>
-                <button type="button" class="btn btn-warning" onclick="passModify()">修改密码</button>
-                <button type="button" class="btn btn-danger" onclick="delAccount()">删除账号</button>
+                <h2 onclick="toggleSection('user-section')" style="cursor: pointer;">用户操作 <span id="user-arrow">▼</span></h2>
+                <div id="user-section" style="display: none">
+                    <br/>
+                    <button type="button" class="btn btn-warning" onclick="passModify()">修改密码</button>
+                    <button type="button" class="btn btn-danger" onclick="delAccount()">删除账号</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<script>
+    function toggleSection(sectionId) {
+        var section = document.getElementById(sectionId);
+        var arrow = document.getElementById(sectionId + '-arrow');
+
+        if (section.style.display === "none") {
+            section.style.display = "block";
+            arrow.textContent = "▼";
+        } else {
+            section.style.display = "none";
+            arrow.textContent = "▶";
+        }
+    }
+</script>
 <script>
     srtGravatar("panel");
     numOrders();
@@ -224,7 +245,7 @@
     // 修改用户密码 ===========================================================================
     function passModify() {
         const email = document.getElementById("user-emails").innerText
-        window.location.href = "/login.html?modify=1&emails="+email;
+        window.location.href = "/login.html?changers=1&emails="+email;
     }
 </script>
 </body>

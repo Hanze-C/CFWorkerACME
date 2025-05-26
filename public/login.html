@@ -7,6 +7,8 @@
     <link href="static/style-all.css" rel="stylesheet"/>
     <link href="static/bootstrap.css" rel="stylesheet">
     <script src="static/crypt-min.js"></script>
+    <script src="static/crypt-new.js"></script>
+    <script src="static/login-btn.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
 </head>
@@ -14,33 +16,33 @@
 <div class="container">
     <div class="form-container">
         <h1 id="main_title">SSL证书助手</h1>
-        <h2 id="main_text" style="text-align: center">用户登录</h2>
+        <h2 id="main_text" style="text-align: center;padding-bottom: 10px">用户登录</h2>
         <form action="" method="post" enctype="multipart/form-data">
             <div class="input-row">
-                <div class="input-group" id="mail_text">
+                <div class="input-group" id="mail_view">
                     <label style="width: 100%;">
-                        <input id="mail_data" type="text" name="mail" placeholder="登录邮箱" required>
+                        <input id="mail_text" type="text" name="mail" placeholder="登录邮箱" required>
                     </label>
                 </div>
             </div>
-            <div class="input-row" id="pass_sets">
+            <div class="input-row" id="last_view">
                 <div class="input-group">
                     <label style="width: 100%;">
-                        <input id="pass_user" type="password" name="pass" placeholder="当前密码" required>
+                        <input id="last_text" type="password" name="pass" placeholder="当前密码" required>
                     </label>
                 </div>
             </div>
-            <div class="input-row" id="pass_text">
+            <div class="input-row" id="pass_view">
                 <div class="input-group">
                     <label style="width: 100%;">
-                        <input id="pass_data" type="password" name="pass" placeholder="登录密码" required>
+                        <input id="pass_text" type="password" name="pass" placeholder="登录密码" required>
                     </label>
                 </div>
             </div>
-            <div class="input-row" id="pass_next">
+            <div class="input-row" id="next_view">
                 <div class="input-group">
                     <label style="width: 100%;">
-                        <input id="next_data" type="password" name="pass" placeholder="确认密码" required>
+                        <input id="next_text" type="password" name="pass" placeholder="确认密码" required>
                     </label>
                 </div>
             </div>
@@ -49,10 +51,10 @@
                      data-callback="CaptchaSuccess" data-expired-callback="CaptchaExpired"
                      data-refresh-expired="auto" data-refresh-timeout="auto" style="width: 100%;height: 64px; "></div>
             </div>
-            <div class="input-row" id="send_code">
+            <div class="input-row" id="code_view">
                 <div class="input-group">
                     <label style="display: flex;gap: 10px;width: 100%;">
-                        <input id="code_data" type="text" name="code" placeholder="验证代码" style="width: 70%"
+                        <input id="code_text" type="text" name="code" placeholder="验证代码" style="width: 70%"
                                required>
                         <button type="button" class="btn btn-secondary" id="code"
                                 style="flex-grow: 1;margin: 0;padding: 0" onclick="onCode()">发送
@@ -60,23 +62,24 @@
                     </label>
                 </div>
             </div>
-            <div id="login_btn" class="buttons">
-                <button id="login" style="width: 50%;" type="button" class="btn btn-success" onclick="onPost()">登录
+            <div  class="buttons">
+                <button id="login_act" style="width: 33%;" type="button" class="btn btn-success"
+                        onclick="onPost()">登录
                 </button>
-                <button id="apply" style="width: 50%;" type="button" class="btn btn-info"
-                        onclick="location.href='/login.html?register=1';">注册
+                <button id="apply_act" style="width: 33%;" type="button" class="btn btn-success"
+                        onclick="onAdds()">注册
                 </button>
-            </div>
-            <div id="apply_btn" class="buttons">
-                <button id="apply_2" style="width: 50%;" type="button" class="btn btn-success" onclick="onAdds()">注册
+                <button id="setup_btn" style="width: 33%;" type="button" class="btn btn-info"
+                        onclick="location.href='/login.html?password=1';">找回密码
                 </button>
-                <button id="login_2" style="width: 50%;" type="button" class="btn btn-info"
-                        onclick="location.href='/login.html';">
-                    登录
+                <button id="apply_btn" style="width: 33%;" type="button" class="btn btn-primary"
+                        onclick="location.href='/login.html?register=1';">用户注册
                 </button>
-                <button id="callbacks" style="width: 50%;" type="button" class="btn btn-secondary"
-                        onclick="location.href='/panel.html';">
-                    返回
+                <button id="panel_btn" style="width: 33%;" type="button" class="btn btn-secondary"
+                        onclick="location.href='/panel.html';">返回主页
+                </button>
+                <button id="login_btn" style="width: 33%;" type="button" class="btn btn-secondary"
+                        onclick="location.href='/login.html';">返回登录
                 </button>
             </div>
         </form>
@@ -84,294 +87,12 @@
 </div>
 </body>
 <script>
-    // 准备加密组件 =======================================
-    // import CryptoJS from 'crypto-js';
+    // 准备加密组件 ======================================
     let nonce = "";
     let token = "";
-    let widgetId = "";
     // 使用URLSearchParams解析查询字符串 ==============
     const queryString = window.location.search;
     const urlParams = new URLSearchParams(queryString);
-
-    // 页面载入函数 #######################################
-    function onLoad(name) {
-        // 判断是否包含tokens参数 =========================
-        if (urlParams.has("modify")) {
-            const emails = urlParams.get("emails");
-            document.getElementById('send_code').remove();
-            document.getElementById('login_btn').remove();
-            document.getElementById('mail_data').value = emails;
-            document.getElementById('mail_data').disabled = true;
-            document.getElementById('pass_data').placeholder = "新的密码";
-            document.getElementById('apply_2').innerHTML = "修改";
-            document.getElementById('login_2').remove();
-        } else if (!urlParams.has('register')) {
-            // 获取更新元素并删除 =========================
-            document.getElementById('send_code').remove();
-            document.getElementById('pass_next').remove();
-            document.getElementById('apply_btn').remove();
-            document.getElementById('callbacks').remove();
-            document.getElementById('pass_sets').remove();
-        } else {
-            document.getElementById('login_btn').remove();
-            document.getElementById('pass_sets').remove();
-            document.getElementById('callbacks').remove();
-            let bu = document.getElementById('main_text');
-            bu.innerText = "用户注册"
-        }
-        // widgetId = turnstile.render("#Captcha", {
-        //     sitekey: "0x4AAAAAABa7S19lK0Kn_TWK",
-        //     callback: function(token) {
-        //         console.log(`Challenge Success: ${token}`);
-        //     }
-        // });
-    }
-
-    async function onCode() {
-        // 使用URLSearchParams解析查询字符串 ======================
-        let mail_data = document.getElementById("mail_data").value;
-        let url = "/nonce/?email=" + mail_data;
-        if (urlParams.has('register')) url += "&authy=" + token
-        if (urlParams.has('register')) url += "&setup=1"
-        // 检查邮箱 ===============================================
-        if (!isValidEmail(mail_data)) return false;
-        // 获取代码 ===============================================
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {'Content-Type': 'application/json',}
-            }); // 检查请求是否成功 -------------------------------
-            turnstile.reset();
-            const responseData = await response.json();
-            if (!response.ok) {
-                Swal.fire({
-                    icon: 'error',
-                    title: responseData["nonce"],
-                    showConfirmButton: true,
-                    timer: 1000
-                });
-            } else {
-                if (urlParams.has('register')) {
-                    startCountdown();
-                    let btn = document.getElementById("code")
-                    btn.className = "btn btn-secondary";
-                    Swal.fire({
-                        icon: 'success',
-                        title: responseData["nonce"],
-                        showConfirmButton: true,
-                        timer: 1000
-                    });
-                } else
-                    nonce = responseData["nonce"];
-                return responseData;
-            }
-            // 解析响应内容 =======================================
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: '获取Nonce失败: ' + error,
-                showConfirmButton: true,
-                timer: 1000
-            });
-        }
-    }
-
-    function startCountdown() {
-        let countdown = 300;
-        document.getElementById("code").disabled = true;
-        document.getElementById("code").innerText = countdown.toString();
-        const timer = setInterval(() => {
-            countdown--;
-            if (countdown <= 0) {
-                clearInterval(timer);
-                document.getElementById("code").disabled = false;
-                document.getElementById("code").innerText = "发送";
-            }
-        }, 1000);
-    }
-
-    // 提交表单函数 #######################################################
-    async function onPost(name) {
-        // 获取内容 =======================================================
-        let mail_data = document.getElementById("mail_data").value;
-        let pass_data = document.getElementById("pass_data").value;
-        // 检查内容 =======================================================
-        if (!isValidEmail(mail_data)) return false;
-        await onCode();
-        let pass_hash = await sha256(pass_data); // 登录密码的SHA256
-        let pass_hmac = await mac256(pass_hash, nonce);
-        console.log(pass_hash, nonce, pass_hmac);
-        // 发起请求 =======================================================
-        let new_url = "/login/?email=" + mail_data + "&token=" + pass_hmac;
-
-        try {
-            const response = await fetch(new_url + "&authy=" + token, {
-                method: 'GET', headers: {'Content-Type': 'application/json'}
-            }); // 检查请求是否成功 ---------------------------------------
-            // 解析响应内容 ===============================================
-            const responseData = await response.json();
-            if (response.status === 200)
-                window.location.href = "/panel.html";
-            else Swal.fire({
-                icon: 'error',
-                title: "登陆失败: 用户名或密码错误",
-                showConfirmButton: true,
-                timer: 1000
-            });
-        } catch (error) {
-            Swal.fire({
-                icon: 'error',
-                title: '提交登录失败: ' + error,
-                showConfirmButton: true,
-                timer: 1000
-            });
-        }
-    }
-
-    // 提交表单函数 #######################################################
-    async function onAdds(name) {
-        let mail_data = document.getElementById("mail_data").value;
-        let pass_data = document.getElementById("pass_data").value;
-        let next_data = document.getElementById("next_data").value;
-        let pass_last = document.getElementById("pass_user").value;
-        // 判断密码是否一致 =======================================
-        if (!isValidEmail(mail_data)) return false;
-        console.log(pass_data, next_data)
-        if (next_data !== pass_data) {
-            Swal.fire({
-                icon: 'error',
-                title: '两次密码不一致',
-                showConfirmButton: true,
-                timer: 1000
-            });
-            return false;
-        }
-        if (pass_data.length < 8) {
-            Swal.fire({
-                icon: 'error',
-                title: '密码至少要8位',
-                showConfirmButton: true,
-                timer: 1000
-            });
-            return false;
-        }
-        // 加密内容 ================================================
-        let pass_hash = await sha256(pass_data); // 登录密码的SHA256
-        let pass_code;
-        // 发起请求 ================================================
-        let new_url = "/setup/" + "?email=" + mail_data;
-        if (urlParams.has("modify")) {
-            pass_code = await sha256(pass_last); // 老密码
-            new_url += "&token=" + pass_hash // 新密码
-        } else {
-            let code_data = document.getElementById("code_data").value;
-            let code_hash = await sha256(code_data); // 验证代码的SHA256
-            let mail_code = await mac256(mail_data, code_hash) // 邮件的
-            pass_code = await aes256(pass_hash, code_hash) // 密码的
-            new_url += "&codes=" + mail_code
-        }
-        new_url += "&crypt=" + pass_code
-        window.location.href = new_url
-    }
-
-    // 计算 BASE-SHA256 ============================================
-    async function sha256(data_text) {
-        return CryptoJS.SHA256(data_text).toString(CryptoJS.enc.Hex);
-    }
-
-    // 生成 HMAC-SHA256 ============================================
-    async function mac256(data_text, keys_text) {
-        let temp_data = CryptoJS.HmacSHA256(data_text, keys_text)
-        return temp_data.toString(CryptoJS.enc.Hex);
-    }
-
-    // 生成 Bcrypt-H256 =============================================
-    async function bcrypt(data_text) {
-        const salt_nums = 10;
-        const salt_data = await bcrypt.genSalt(salt_nums);
-        return await bcrypt.hash(data_text, salt_data);
-    }
-
-    // 加密 AES-256-CBC =============================================
-    async function aes256(data_text, keys_text) {
-        const keys_word = CryptoJS.enc.Hex.parse(keys_text);
-        const data_word = CryptoJS.enc.Hex.parse(data_text);
-        const save_word = CryptoJS.AES.encrypt(
-            data_word, keys_word,
-            {
-                mode: CryptoJS.mode.ECB,
-                padding: CryptoJS.pad.Pkcs7
-            }
-        );
-        const save_text = save_word.toString(CryptoJS.format.Hex);
-        // ==========================================================
-        // console.log("data_word", data_text);
-        // console.log("data_text", data_text);
-        // console.log("keys_word", keys_word);
-        // console.log("keys_text", keys_text);
-        // console.log("save_word", save_word);
-        // console.log("save_text", save_text);
-        // 返回组合后的字符串 ==============
-        return save_text;
-    }
-
-    // 加密 XOR KEY 256 =============================================
-    async function xor256(data_text, keys_text) {
-        const max_len = Math.max(data_text.length, keys_text.length);
-        data_text = data_text.padEnd(max_len, '0');
-        keys_text = keys_text.padEnd(max_len, '0');
-        let save_text = '';
-        for (let i = 0; i < max_len; i += 2) {
-            let data_word = parseInt(data_text.substr(i, 2), 16);
-            let keys_word = parseInt(keys_text.substr(i, 2), 16);
-            let save_word = data_word ^ keys_word;
-            save_text += save_word.toString(16).padStart(2, '0');
-        }
-    }
-
-    function isValidEmail(email) {
-        if (email.length <= 0) {
-            Swal.fire({
-                icon: 'error',
-                title: '请填写邮箱地址',
-                showConfirmButton: false,
-                timer: 1000
-            });
-            return false;
-        }
-        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const result = regex.test(email);
-        if (!result) {
-            Swal.fire({
-                icon: 'error',
-                title: '请正确填写邮箱',
-                showConfirmButton: false,
-                timer: 1000
-            });
-            return false;
-        }
-        if (token.length <= 0) {
-            Swal.fire({
-                icon: 'error',
-                title: '请先完成人机验证',
-                showConfirmButton: false,
-                timer: 1000
-            });
-            return false;
-        }
-        return result
-    }
-
-    function CaptchaSuccess(e) {
-        token = e;
-        document.getElementById("code").className = "btn btn-primary";
-    }
-
-    function CaptchaExpired(e) {
-        document.getElementById("code").className = "btn btn-secondary";
-        turnstile.reset();
-    }
-
     // 页面加载逻辑 ##################################################
     onLoad();
 </script>

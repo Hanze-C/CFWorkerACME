@@ -10,11 +10,12 @@ import {generateKeyPairSync} from "crypto";
 export async function getNonce(c: Context, lens: number = 8) {
     const email = <string>c.req.query('email');
     const setup = <string>c.req.query('setup');
+    const reset = <string>c.req.query('reset');
     let user_db: Record<string, any> = await getUsers(c, email);
     const nonce: string = await newNonce(lens);
     // 注册新用户 ========================================================================
-    if (setup != undefined && setup.length > 0 &&
-        (setup == "1" || setup == "true")) {
+    if (setup != undefined && setup.length > 0 && (setup == "1" || setup == "true") ||
+        reset != undefined && reset.length > 0 && (reset == "1" || reset == "true")) {
         if (!await Turnstile(c)) return c.json({"nonce": "请先完成验证"}, 403);
         if (Object.keys(user_db).length > 0) {
             let diff: number = Date.now() - user_db[0]["time"]
@@ -23,6 +24,8 @@ export async function getNonce(c: Context, lens: number = 8) {
                 if (diff >= 300000) await delUsers(c, email)
                 else return c.json(
                     {"nonce": "操作过于频繁\n请等" + vars + "分钟后再试"}, 403)
+            } else if (reset == "1" || reset == "true") {
+                return c.json(await addUsers(c, email, true))
             } else return c.json(
                 {"nonce": "此邮箱已经被注册\n请直接登录\n如忘记密码请重置"}, 400)
         }
@@ -40,12 +43,11 @@ export async function getNonce(c: Context, lens: number = 8) {
 export async function Turnstile(c: Context) {
     const authy = <string>c.req.query('authy');
     const SECRET_KEY = c.env.AUTH_KEYS;
-    const ip = c.req.header("CF-Connecting-IP");
+    const ip: any = c.req.header("CF-Connecting-IP");
     let formData = new FormData();
     formData.append("secret", SECRET_KEY);
     formData.append("response", authy);
     formData.append("remoteip", ip);
-
     const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
     const result = await fetch(url, {
         body: formData,
@@ -84,13 +86,22 @@ export async function delUsers(c: Context, email: string) {
 }
 
 // 新增用户 ###############################################################################
-export async function addUsers(c: Context, email: string) {
+export async function addUsers(c: Context, email: string, reset: boolean = false) {
     const nonce = await newNonce(8);
-    await saves.insertDB(c.env.DB_CF, "Users", {
-        mail: email,
-        code: nonce,
-        time: Date.now(),
-    });
+    if (!reset) {
+        await saves.insertDB(c.env.DB_CF, "Users", {
+            mail: email,
+            code: nonce,
+            time: Date.now(),
+        });
+    } else {
+        await saves.updateDB(c.env.DB_CF, "Users", {
+            code: nonce,
+            time: Date.now(),
+        }, {
+            mail: email,
+        });
+    }
     return await codeSend(c, email, nonce)
 }
 
@@ -179,13 +190,12 @@ export async function userRegs(c: Context) {
 export async function userPost(c: Context) {
     let pass_hmac_in: string = <string>c.req.query('token');
     let mail_data_in: string = <string>c.req.query('email');
-    if (!await Turnstile(c)) return c.json({"nonce": "请先完成验证"}, 403);
+    // if (!await Turnstile(c)) return c.json({"nonce": "请先完成验证"}, 403);
     let user_data_db: Record<string, any>[] = await getUsers(c, mail_data_in);
     if (Object.keys(user_data_db).length <= 0) return c.json({flags: 0}, 401);
     let user_data_in = user_data_db[0]
     const pass_hmac_db = await hmacSHA2(user_data_in['pass'], user_data_in['code']);
-    // console.log(user_data_in['pass'], user_data_in['code'], pass_hmac_in, pass_hmac_db);
-    if (pass_hmac_db != pass_hmac_in) return c.json({flags: 0}, 401);
+    if (pass_hmac_db != pass_hmac_in) return c.json({flags: 0, nonce: "用户名密码错误"}, 401);
     // 密码正确设置 Cookie ================================================================
     local.deleteCookie(c, 'users')
     local.setCookie(c, 'mail', mail_data_in);

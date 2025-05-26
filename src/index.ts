@@ -38,7 +38,6 @@ app.get('/panel/', async (c) => {
     return c.redirect("/panel.html", 302);
 })
 
-
 // 申请证书 ###############################################################################
 app.use('/apply/', async (c) => {
     if (c.req.method !== 'POST') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
@@ -146,7 +145,6 @@ app.use('/order/', async (c) => {
     }
 })
 
-
 // 用户注册 ###############################################################################
 app.get('/setup/', async (c) => {
     return users.userRegs(c);
@@ -168,13 +166,13 @@ app.get('/exits/', async (c) => {
     return users.userExit(c)
 })
 
-// 退出登录 ###############################################################################
+// 定时任务 ###############################################################################
 app.get('/tests/', async (c) => {
     let result: any[] = await certs.Processing(c.env);
     return c.json(result)
 })
 
-// 获取订单 ###############################################################################
+// 更新密钥 ###############################################################################
 app.use('/acmes/', async (c) => {
     if (c.req.method !== 'POST') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);
     if (!await users.userAuth(c)) return c.json({"flags": 2, "texts": "用户尚未登录"}, 401);
