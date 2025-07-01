@@ -1,7 +1,7 @@
 FROM node:lts
 WORKDIR /app
 
-COPY wrangler.jsonc.example wrangler.jsonc
+COPY wrangler.example.jsonc wrangler.jsonc
 COPY entrypoint.sh ./entrypoint.sh
 COPY public ./public
 COPY package*.json ./
