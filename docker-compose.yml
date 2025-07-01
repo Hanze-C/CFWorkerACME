@@ -1,0 +1,27 @@
+version: '3'
+services:
+  oplist-api-server:
+    image: pikachuim/newssl:latest
+    container_name: ssl-helper
+    ports:
+      - "3000:3000"
+    environment:
+      - OPLIST_MAIL_KEYS="" # 替换为新的邮件密钥
+      - OPLIST_MAIL_SEND="" # 替换为邮件发送者
+      - OPLIST_AUTH_KEYS="" # 替换为认证密钥
+      - OPLIST_DCV_AGENT="" # 替换为 DCV 代理
+      - OPLIST_DCV_EMAIL="" # 替换为 DCV 邮件
+      - OPLIST_DCV_TOKEN="" # 替换为 DCV 令牌
+      - OPLIST_DCV_ZONES="" # 替换为 DCV 区域
+      - OPLIST_GTS_useIt="" # 替换为 GTS 使用标志
+      - OPLIST_GTS_keyMC="" # 替换为 GTS 密钥 MC
+      - OPLIST_GTS_keyID="" # 替换为 GTS 密钥 ID
+      - OPLIST_GTS_KeyTS="" # 替换为 GTS 密钥 TS
+      - OPLIST_SSL_useIt="" # 替换为 SSL 使用标志
+      - OPLIST_SSL_keyMC="" # 替换为 SSL 密钥 MC
+      - OPLIST_SSL_keyID="" # 替换为 SSL 密钥 ID
+      - OPLIST_SSL_KeyTS="" # 替换为 SSL 密钥 TS
+      - OPLIST_ZRO_useIt="" # 替换为 ZRO 使用标志
+      - OPLIST_ZRO_keyMC="" # 替换为 ZRO 密钥 MC
+      - OPLIST_ZRO_keyID="" # 替换为 ZRO 密钥 ID
+      - OPLIST_ZRO_KeyTS="" # 替换为 ZRO 密钥 TS
