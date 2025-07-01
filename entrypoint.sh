@@ -132,9 +132,9 @@ else
     sed -i "s|\"ZRO_KeyTS\":.*|\"ZRO_KeyTS\": \"${OPLIST_ZRO_KeyTS}\",|" ./wrangler.jsonc
 fi
 
-
 echo "Modified wrangler.jsonc file:"
 cat ./wrangler.jsonc
+service cron start
 # 执行npm run dev
 echo "Starting wrangler dev..."
 wrangler dev --ip 0.0.0.0 --port 3000 -c wrangler.jsonc

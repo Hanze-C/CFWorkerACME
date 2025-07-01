@@ -172,6 +172,12 @@ app.get('/tests/', async (c) => {
     return c.json(result)
 })
 
+// 定时任务 ###############################################################################
+app.get('/tasks/', async (c) => {
+    let result: any[] = await certs.Processing(c.env);
+    return c.json(result)
+})
+
 // 更新密钥 ###############################################################################
 app.use('/acmes/', async (c) => {
     if (c.req.method !== 'POST') return c.json({"flags": 1, "texts": "请求方式无效"}, 400);

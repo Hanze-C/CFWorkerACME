@@ -294,10 +294,7 @@
                 document.getElementById('verify-all').disabled = true;
                 document.getElementById('verify-all').innerText = "耐心等待";
                 document.getElementById('verify-all').className = "btn btn-secondary";
-                if (order.flag !== -1)
-                    document.getElementById('re-gen').disabled = true;
                 document.getElementById('reapply').disabled = true;
-                // document.getElementById('cancel-application').disabled = true;
             }
             if (order.cert.length === 0) {
                 document.getElementById('download-certificate').disabled = true;
