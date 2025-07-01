@@ -6,7 +6,6 @@ const { createHmac, createSign, constants: { RSA_PKCS1_PADDING } } = require('cr
 const { getJwk } = require('./crypto');
 const { log } = require('./logger');
 const axios = require('./axios');
-// import xior from 'xior';
 
 /**
  * ACME HTTP client
@@ -47,23 +46,15 @@ class HttpClient {
         opts.method = method;
         opts.adapter = "fetch"
         opts.validateStatus = null;
-        // console.log(opts.url)
         /* Headers */
         if (typeof opts.headers === 'undefined') {
             opts.headers = {};
         }
-
         opts.headers['Content-Type'] = 'application/jose+json';
 
         /* Request */
         log(`HTTP request: ${method} ${url}`);
         const resp = await axios.request(opts);
-        // let resp = await xior.request(opts);
-        // const headers = {};
-        // for (const [key, value] of resp.headers) {
-        //     headers[key] = value;
-        // }
-        // resp.headers = headers
 
         log(`RESP ${resp.status} ${method} ${url}`);
         return resp;

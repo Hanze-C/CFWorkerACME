@@ -11,6 +11,7 @@ COPY src ./src
 RUN npm install -g wrangler
 RUN chmod +x ./entrypoint.sh
 RUN npm install
+COPY src/http.js ./node_modules/acme-client/src/
 RUN wrangler d1 execute test-db --local --file schema.set.sql
 EXPOSE 3000
 ENTRYPOINT ["sh","/app/entrypoint.sh"]
