@@ -149,6 +149,7 @@
         order_data.list.forEach(domain => {
             const domainElement = document.createElement('div');
             domainElement.className = 'domain-row align-items-center mb-3';
+            console.log("domain", domain);
             domainElement.innerHTML = `
                     <div class="domain-setting">
                         <div class="d-flex align-items-center flex-grow-1">
@@ -278,8 +279,6 @@
     }
 
 
-
-
     // 页面加载 ########################################################################################################
     function onLoader() {
         // 判断是否包含tokens参数 =========================
@@ -287,7 +286,6 @@
             window.location.href = "/panel/";
         } else {
             const order = getOrder(urlParams.get('id'));
-            console.log(order);
             if (Object.keys(order).length === 0) {
                 return; // 如果没有获取到有效订单数据，直接返回
             }

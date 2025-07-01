@@ -44,5 +44,5 @@ function srtGravatar(id) {
 
 function setActive(id) {
     let element = document.getElementById(id);
-    document.getElementById(id).classList.add('active');
+    if (element) element.classList.add('active');
 }

@@ -82,6 +82,7 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
         if (author_save[domain_name] == undefined) continue;
         console.log(author_save);
         domain_item['auth'] = author_save[domain_name]['text'];
+        domain_item.flag = 2
         if (domain_item['type'] == "dns-auto") {
             let domain_auto = await hmacSHA2(domain_name.replaceAll("*.", ""), order_user['mail'])
             domain_item['auto'] = domain_auto.substring(0, 16) + "." + env.DCV_AGENT
@@ -89,9 +90,7 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
             try { // 设置域名内容 ====================================================
                 let data: Record<string, any> = await agent.dnsAdd(
                     env, domain_item, domain_name);
-                if (data['success']) {
-                    domain_item.flag = 2
-                } else {
+                if (!data['success']) {
                     domain_item.flag = 1
                     domain_flag = 1
                     domain_text += domain_item.name +
@@ -101,6 +100,7 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
                 console.error('Error:', error);
             }
         }
+        console.log(domain_item);
         domain_save.push(domain_item);
     }
     if (domain_text.length == 0) domain_text = "域名处理成功"
