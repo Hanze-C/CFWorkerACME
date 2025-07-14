@@ -3,13 +3,7 @@ import * as saves from './saves';
 import * as certs from './certs';
 import * as local from "hono/cookie";
 import {Hono} from 'hono'
-import {serveStatic} from 'hono/cloudflare-workers' // @ts-ignore
-import manifest from '__STATIC_CONTENT_MANIFEST'
 import {opDomain} from "./certs";
-// import {handle} from 'hono/vercel'
-
-// export const runtime = 'edge'
-// const app = new Hono().basePath('/')
 
 // 绑定数据 ###############################################################################
 export type Bindings = {
@@ -20,7 +14,7 @@ export type Bindings = {
     ZRO_keyMC: string, ZRO_keyID: string, ZRO_KeyTS: string, ZRO_useIt: string
 }
 export const app = new Hono<{ Bindings: Bindings }>()
-app.use("*", serveStatic({manifest: manifest, root: "./"}));
+
 
 // 获取信息 ###############################################################################
 app.get('/users', async (c) => {
