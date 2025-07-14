@@ -19,7 +19,7 @@ export type Bindings = {
     SSL_keyMC: string, SSL_keyID: string, SSL_KeyTS: string, SSL_useIt: string,
     ZRO_keyMC: string, ZRO_keyID: string, ZRO_KeyTS: string, ZRO_useIt: string
 }
-const app = new Hono<{ Bindings: Bindings }>()
+export const app = new Hono<{ Bindings: Bindings }>()
 app.use("*", serveStatic({manifest: manifest, root: "./"}));
 
 // 获取信息 ###############################################################################

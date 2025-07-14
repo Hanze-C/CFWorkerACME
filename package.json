@@ -1,10 +1,18 @@
 {
   "name": "CFWorkerACME",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify"
+    "dev-js": "tsx watch src/basic.ts",
+    "build-js": "webpack --mode production",
+    "deploy-js": "node dist/bundle.js",
+    "dev-cf": "wrangler dev",
+    "deploy-cf": "wrangler deploy --minify --config wrangler.encrypt.jsonc",
+    "dev-eo": "edgeone pages dev",
+    "build-eo": "edgeone pages build",
+    "deploy-eo": "edgeone pages deploy ./ -n edgeone-hono-app -t ",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
+    "@edgeone/ef-types": "^1.0.5",
     "@mapbox/node-pre-gyp": "^2.0.0",
     "@prisma/adapter-d1": "^6.5.0",
     "@prisma/client": "^6.5.0",
@@ -22,12 +30,17 @@
     "xior": "^0.7.8"
   },
   "devDependencies": {
+    "@serverless-devs/s": "^3.1.10",
+    "esbuild": "^0.25.5",
     "@cloudflare/workers-types": "^4.20250214.0",
     "@types/bcrypt": "^5.0.2",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^22.14.1",
     "prisma": "^6.6.0",
-    "wrangler": "^4.3.0"
+    "wrangler": "^4.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "tsx": "^4.7.1"
   },
   "overrides": {}
 }
