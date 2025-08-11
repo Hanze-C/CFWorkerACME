@@ -208,7 +208,7 @@ export async function getCerts(env: Bindings, order_user: any, order_info: any) 
         let [privateKeyBuff, certificateCSR] = await acme.crypto.createCsr({ // 创建证书请求 ==============================
             altNames: domainsListCSR, commonName: domainsListCSR[0], country: order_info['C'], state: order_info['S'],
             locality: order_info['ST'], organization: order_info['O'], organizationUnit: order_info['OU']
-        }, privateKeyText);
+        }, privateKeyText || "");
         await saves.updateDB(env.DB_CF, "Apply", {keys: privateKeyBuff.toString()}, {uuid: order_info['uuid']})
         const finish_text: any = await client_data.finalizeOrder(orders_data, certificateCSR);// 最终确认订单
         console.log('Orders Remote Finish Status:', finish_text);
