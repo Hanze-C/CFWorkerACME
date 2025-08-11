@@ -32,6 +32,8 @@ lerna-debug.log*
 # misc
 .DS_Store
 wrangler.encrypt.jsonc
+wrangler.oplists.jsonc
+
 # Tencent Cloud EdgeOne
 .env
 .edgeone/*
