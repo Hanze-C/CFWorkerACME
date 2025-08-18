@@ -154,7 +154,7 @@ fi
 
 # 执行npm run dev
 echo "Starting wrangler dev..."
-npm run build-js && npm run deploy-js
+npm run deploy-js
 if [ $? -ne 0 ]; then
     echo "wrangler dev failed, exiting."
     exit 1
