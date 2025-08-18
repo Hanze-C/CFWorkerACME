@@ -80,7 +80,7 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
         // if (domain_item.wild) domain_name = "*." + domain_name
         // console.log(domain_name, author_save, author_save[domain_name]);
         if (author_save[domain_name] == undefined) continue;
-        console.log(author_save);
+        // console.log(author_save);
         domain_item['auth'] = author_save[domain_name]['text'];
         domain_item.flag = 2
         if (domain_item['type'] == "dns-auto") {
@@ -100,14 +100,14 @@ export async function setApply(env: Bindings, order_user: any, order_info: any) 
                 console.error('Error:', error);
             }
         }
-        console.log(domain_item);
+        // console.log(domain_item);
         domain_save.push(domain_item);
     }
     if (domain_text.length == 0) domain_text = "域名处理成功"
     await saves.updateDB(env.DB_CF, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
     await saves.updateDB(env.DB_CF, "Apply", {flag: domain_flag}, {uuid: order_info['uuid']})
     await saves.updateDB(env.DB_CF, "Apply", {text: domain_text}, {uuid: order_info['uuid']})
-    console.log(domain_save);
+    // console.log(domain_save);
     return {"texts": domain_text};
 }
 
@@ -118,8 +118,12 @@ export async function opDomain(env: Bindings, order_user: any, order_info: any, 
     let domain_save: any[] = []
     let domain_flag: number = 3
     for (let domain_item of JSON.parse(domain_list)) {
-        console.log(domain_item, sets_list);
-        console.log(sets_list.some(item => item.toLowerCase() === domain_item.name.toLowerCase()));
+        // console.log(domain_item, sets_list);
+        // console.log(sets_list.some(item => item.toLowerCase() === domain_item.name.toLowerCase()));
+        if (domain_item.flag >= 4) {
+            domain_save.push(domain_item);
+            continue;
+        }
         if (sets_list.some(item => item.toLowerCase() === domain_item.name.toLowerCase()
             || item.toLowerCase() === "all")) {
             domain_item.flag = 3;
@@ -155,26 +159,24 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
             domain_save.push(domain_item);
             continue
         }
+        console.log(domain_item.name, author_flag);
         if (!author_flag) { // 本地验证失败 ========================================================
             domain_item.flag = 2;
             status_flag = 2
         } else { // 本地验证成功 =====================================================================
             let author_data: Record<string, any> = author_save[domain_item.name]
-            console.log(domain_item.name, author_flag);
             if (author_data.data['status'] == "invalid") { // 已有验证失败
                 domain_item.flag = -1;
                 status_flag = -1;
-                domain_fail.push(domain_item.name)
-                continue
             }
             if (author_data.data['status'] == 'pending') {
                 try {
                     let upload_flag: boolean = await client_data.verifyChallenge(author_data.auth, author_data.data);
                     console.log('Domain Server Verify Status:', upload_flag);
                     let submit_flag = await client_data.completeChallenge(author_data.data);
-                    console.log('Domain Remote Upload Status:', submit_flag);
+                    console.log('Domain Remote Upload Status:', submit_flag['status']);
                     let result_flag = await client_data.waitForValidStatus(author_data.data);
-                    console.log('Domain Remote Verify Status:', result_flag);
+                    console.log('Domain Remote Verify Status:', result_flag['status']);
                     if (result_flag.status == "valid") {
                         domain_item.flag = 4;
                     }
@@ -182,7 +184,6 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
                     console.log('Domain Remote Verify Errors:', error);
                     domain_item.flag = -1;
                     status_flag = -1;
-                    continue;
                 }
             }
             if (author_data.data['status'] == 'valid') {
@@ -192,7 +193,7 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
         domain_save.push(domain_item);
     }
     orders_data = await client_data.getOrder(orders_text);
-    console.log(orders_data);
+    // console.log(orders_data);
     await saves.updateDB(env.DB_CF, "Apply", {data: JSON.stringify(orders_data)}, {uuid: order_info['uuid']})
     await saves.updateDB(env.DB_CF, "Apply", {list: JSON.stringify(domain_save)}, {uuid: order_info['uuid']})
     await saves.updateDB(env.DB_CF, "Apply", {flag: status_flag}, {uuid: order_info['uuid']})
@@ -208,8 +209,13 @@ export async function getCerts(env: Bindings, order_user: any, order_info: any) 
     let orders_text: any = JSON.parse(order_info['data'])
     let client_data: any = await getStart(env, order_user, order_info);
     let orders_data: any = await client_data.getOrder(orders_text); // 获取授权信息
-    console.log(orders_data);
+    // console.log(orders_data);
     console.log('Orders Remote Verify Status:', orders_data.status);
+    if (orders_data.status == "invalid") {
+        await saves.updateDB(env.DB_CF, "Apply", {flag: -1}, {uuid: order_info['uuid']})
+        await saves.updateDB(env.DB_CF, "Apply", {text: "证书签发失败"}, {uuid: order_info['uuid']})
+        return {"texts": "验证状态无效"};
+    }
     if (orders_data.status === 'ready') {
         let domainsListCSR: any = await getNames(order_info, false);
         let privateKeyText = null // 私钥创建过程 ===================================================================
@@ -355,14 +361,14 @@ async function dnsCheck(author_save: any, domain_item: any) {
         "_acme-challenge." + domain_name, domain_type)
     // console.log('Records for', domain_name, ':');
     for (let record_item of record_list) { // 查询所有DNS记录
-        console.log(record_item['data']);
-        console.log(author_text);
+        // console.log(record_item['data']);
+        // console.log(author_text);
         if (record_item['data'] == author_text) {
             author_flag = true;
             break;
         }
     }
-    console.log(author_flag);
+    // console.log(author_flag);
     return author_flag;
 }
 
