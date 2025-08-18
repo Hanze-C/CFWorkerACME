@@ -196,6 +196,7 @@ app.use('/erase/', async (c) => {
 
 
 import xior from 'xior';
+import {cleanDNS} from "./query";
 
 app.use('/fetch/', async (c) => {
     try {
@@ -234,6 +235,11 @@ app.use('/encry/', async (c) => {
         console.error('Request Fail:', err);
         return c.json({"flag": false, "data": err})
     }
+})
+
+app.use('/clean/', async (c) => {
+    const result: Record<string, any> = await cleanDNS(c.env);
+    return c.json({"flag": result.flag, "text": result.text})
 })
 
 

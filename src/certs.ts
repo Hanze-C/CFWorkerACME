@@ -151,12 +151,16 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
     let domain_fail: string[] = [];
     for (let domain_item of JSON.parse(domain_list)) { // 验证DNS
         let author_flag: boolean = await dnsCheck(author_save, domain_item)
+        if (status_flag == -1) {
+            domain_save.push(domain_item);
+            continue
+        }
         if (!author_flag) { // 本地验证失败 ========================================================
             domain_item.flag = 2;
             status_flag = 2
         } else { // 本地验证成功 =====================================================================
             let author_data: Record<string, any> = author_save[domain_item.name]
-            console.log(author_data);
+            console.log(domain_item.name, author_flag);
             if (author_data.data['status'] == "invalid") { // 已有验证失败
                 domain_item.flag = -1;
                 status_flag = -1;
@@ -164,14 +168,21 @@ export async function dnsAuthy(env: Bindings, order_user: any, order_info: any) 
                 continue
             }
             if (author_data.data['status'] == 'pending') {
-                let upload_flag: boolean = await client_data.verifyChallenge(author_data.auth, author_data.data);
-                console.log('Domain Server Verify Status:', upload_flag);
-                let submit_flag = await client_data.completeChallenge(author_data.data);
-                console.log('Domain Remote Upload Status:', submit_flag);
-                let result_flag = await client_data.waitForValidStatus(author_data.data);
-                console.log('Domain Remote Verify Status:', result_flag);
-                if (result_flag.status == "valid") {
-                    domain_item.flag = 4;
+                try {
+                    let upload_flag: boolean = await client_data.verifyChallenge(author_data.auth, author_data.data);
+                    console.log('Domain Server Verify Status:', upload_flag);
+                    let submit_flag = await client_data.completeChallenge(author_data.data);
+                    console.log('Domain Remote Upload Status:', submit_flag);
+                    let result_flag = await client_data.waitForValidStatus(author_data.data);
+                    console.log('Domain Remote Verify Status:', result_flag);
+                    if (result_flag.status == "valid") {
+                        domain_item.flag = 4;
+                    }
+                } catch (error) {
+                    console.log('Domain Remote Verify Errors:', error);
+                    domain_item.flag = -1;
+                    status_flag = -1;
+                    continue;
                 }
             }
             if (author_data.data['status'] == 'valid') {
